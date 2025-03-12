@@ -1,0 +1,53 @@
+generator client {
+  provider = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Market {
+  id        String @id @default(uuid())
+  name      String
+  type      String
+  location  String
+  lots      Lot[]
+  ownerId   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Lot {
+  id          String @id @default(uuid())
+  name        String
+  details     String
+  price       Float
+  available   Boolean @default(true)
+  shape       Json    // Store polygon coordinates as JSON
+  position    Json    // Store position (x, y) as JSON
+  market      Market  @relation(fields: [marketId], references: [id])
+  marketId    String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  bookings Booking[]
+}
+
+model Booking {
+  id        String   @id @default(uuid())
+  tenantId  String 
+  lotId     String 
+  status    BookingStatus @default(PENDING)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  lot       Lot      @relation(fields: [lotId], references: [id])
+}
+
+enum BookingStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}

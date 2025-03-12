@@ -1,0 +1,16 @@
+{
+  "projects": {
+    "shared-role": {
+      "type": "library",
+      "root": "libs/shared-role",
+      "entryFile": "index",
+      "sourceRoot": "libs/shared-role/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/shared-role/tsconfig.lib.json"
+      }
+    }
+  },
+  "compilerOptions": {
+    "webpack": true
+  }
+}

@@ -1,0 +1,57 @@
+version: '3.8'
+services:
+  auth-db:
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: auth_user
+      POSTGRES_PASSWORD: auth_password
+      POSTGRES_DB: auth_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - auth_data:/var/lib/postgresql/data
+    networks:
+      - prisma-network
+
+  market-db:
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: market_user
+      POSTGRES_PASSWORD: market_password
+      POSTGRES_DB: market_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - market_data:/var/lib/postgresql/data
+    networks:
+      - prisma-network
+
+  auth-service:
+    build: ./auth-service
+    ports:
+      - "3001:3000"
+    env_file:
+      - .env
+    depends_on:
+      - auth-db
+    networks:
+      - prisma-network
+
+  market-service:
+    build: ./market-service
+    ports:
+      - "3002:3000"
+    env_file:
+      - .env
+    depends_on:
+      - market-db
+    networks:
+      - prisma-network
+
+volumes:
+  auth_data:
+  market_data:
+
+networks:
+  prisma-network:
+    driver: bridge
