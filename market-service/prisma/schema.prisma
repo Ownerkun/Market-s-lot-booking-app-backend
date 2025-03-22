@@ -13,6 +13,8 @@ model Market {
   name      String
   type      String
   location  String
+  latitude  Float?
+  longitude Float?
   lots      Lot[]
   ownerId   String?
   createdAt DateTime @default(now())
@@ -24,15 +26,28 @@ model Lot {
   name        String
   details     String
   price       Float
-  available   Boolean @default(true)
   shape       Json    // Store polygon coordinates as JSON
   position    Json    // Store position (x, y) as JSON
+  available Boolean  @default(true)
   market      Market  @relation(fields: [marketId], references: [id])
   marketId    String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   bookings Booking[]
+  availabilities LotAvailability[]
+}
+
+model LotAvailability {
+  id        String   @id @default(uuid())
+  date      DateTime
+  available Boolean  @default(true)
+  lot       Lot      @relation(fields: [lotId], references: [id])
+  lotId     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([lotId, date])
 }
 
 model Booking {
@@ -40,6 +55,7 @@ model Booking {
   tenantId  String 
   lotId     String 
   status    BookingStatus @default(PENDING)
+  date      DateTime
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -50,4 +66,5 @@ enum BookingStatus {
   PENDING
   APPROVED
   REJECTED
+  CANCELLED
 }

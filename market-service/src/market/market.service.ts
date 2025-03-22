@@ -4,6 +4,7 @@ import { CreateMarketDto, UpdateMarketDto } from './dto/market.dto';
 import { Role } from './enum/role.enum';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
+import { Market } from '@prisma/client';
 
 @Injectable()
 export class MarketService {
@@ -29,6 +30,8 @@ export class MarketService {
         name: dto.name,
         type: dto.type,
         location: dto.location,
+        latitude: dto.latitude,
+        longitude: dto.longitude,
         ownerId: dto.ownerId,
       },
     });
@@ -82,7 +85,9 @@ export class MarketService {
         name: dto.name,
         type: dto.type,
         location: dto.location,
-        ownerId: dto.ownerId, // Optional for updates
+        latitude: dto.latitude,
+        longitude: dto.longitude,
+        ownerId: dto.ownerId,
       },
     });
   }
@@ -103,5 +108,40 @@ export class MarketService {
     return this.prisma.market.delete({
       where: { id },
     });
+  }
+
+  haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const toRadians = (degrees: number) => degrees * (Math.PI / 180);
+
+    const R = 6371; // Radius of the Earth in kilometers
+    const dLat = toRadians(lat2 - lat1);
+    const dLon = toRadians(lon2 - lon1);
+
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c; // Distance in kilometers
+  }
+
+  async findNearestMarket(userLat: number, userLon: number) {
+    const markets = await this.prisma.market.findMany();
+
+    let nearestMarket: Market | null = null; // Explicitly define the type
+    let shortestDistance = Infinity;
+
+    for (const market of markets) {
+      if (market.latitude && market.longitude) {
+        const distance = this.haversineDistance(userLat, userLon, market.latitude, market.longitude);
+        if (distance < shortestDistance) {
+          shortestDistance = distance;
+          nearestMarket = market;
+        }
+      }
+    }
+
+    return nearestMarket;
   }
 }

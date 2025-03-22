@@ -1,43 +1,91 @@
 # Market Service API Documentation
 
-## Endpoints
+## Authentication
 
-### 1. Create Market
+### Register
 
-- **URL:** `/api/markets`
-- **Method:** `POST`
-- **Description:** Creates a new market.
-- **Headers:**
-  - `Authorization: Bearer <token>`
-- **Request Body:**
+- **URL**: `/auth/register`
+- **Method**: `POST`
+- **Body**:
+  ```json
+  {
+    "email": "string",
+    "password": "string",
+    "role": "TENANT | LANDLORD"
+  }
+  ```
+- **Response**:
+  ```json
+  {
+    "statusCode": 201,
+    "message": "User registered successfully",
+    "data": {
+      "userId": "string",
+      "profile": { ... }
+    }
+  }
+  ```
+
+### Login
+
+- **URL**: `/auth/login`
+- **Method**: `POST`
+- **Body**:
+  ```json
+  {
+    "email": "string",
+    "password": "string"
+  }
+  ```
+- **Response**:
+  ```json
+  {
+    "statusCode": 200,
+    "message": "Login successful",
+    "data": {
+      "token": "string"
+    }
+  }
+  ```
+
+## Markets
+
+### Create Market
+
+- **URL**: `/markets`
+- **Method**: `POST`
+- **Headers**: `Authorization: Bearer <token>`
+- **Body**:
   ```json
   {
     "name": "string",
     "type": "string",
-    "location": "string"
+    "location": "string",
+    "latitude": "number",
+    "longitude": "number"
   }
   ```
-- **Response:**
+- **Response**:
   ```json
   {
     "id": "string",
     "name": "string",
     "type": "string",
     "location": "string",
+    "latitude": "number",
+    "longitude": "number",
     "ownerId": "string",
     "createdAt": "string",
     "updatedAt": "string"
   }
   ```
 
-### 2. Get Markets
+### Get Markets
 
-- **URL:** `/api/markets`
-- **Method:** `GET`
-- **Description:** Retrieves all markets for tenants or markets owned by the landlord.
-- **Headers:**
-  - `Authorization: Bearer <token>`
-- **Response:**
+- **URL**: `/markets`
+- **Method**: `GET`
+- **Headers**: `Authorization: Bearer <token>`
+- **Response**:
   ```json
   [
     {
@@ -45,6 +93,8 @@
       "name": "string",
       "type": "string",
       "location": "string",
+      "latitude": "number",
+      "longitude": "number",
       "ownerId": "string",
       "createdAt": "string",
       "updatedAt": "string"
@@ -52,123 +102,137 @@
   ]
   ```
 
-### 3. Get Market By ID
+### Get Market by ID
 
-- **URL:** `/api/markets/:id`
-- **Method:** `GET`
-- **Description:** Retrieves a market by its ID.
-- **Headers:**
-  - `Authorization: Bearer <token>`
-- **Response:**
+- **URL**: `/markets/:id`
+- **Method**: `GET`
+- **Headers**: `Authorization: Bearer <token>`
+- **Response**:
   ```json
   {
     "id": "string",
     "name": "string",
     "type": "string",
     "location": "string",
+    "latitude": "number",
+    "longitude": "number",
     "ownerId": "string",
     "createdAt": "string",
     "updatedAt": "string",
-    "lots": [
-      {
-        "id": "string",
-        "name": "string",
-        "details": "string",
-        "price": "number",
-        "available": "boolean",
-        "shape": "json",
-        "position": "json",
-        "createdAt": "string",
-        "updatedAt": "string"
-      }
-    ]
+    "lots": [ ... ]
   }
   ```
 
-### 4. Update Market
+### Update Market
 
-- **URL:** `/api/markets/:id`
-- **Method:** `PUT`
-- **Description:** Updates a market by its ID.
-- **Headers:**
-  - `Authorization: Bearer <token>`
-- **Request Body:**
+- **URL**: `/markets/:id`
+- **Method**: `PUT`
+- **Headers**: `Authorization: Bearer <token>`
+- **Body**:
   ```json
   {
     "name": "string",
     "type": "string",
-    "location": "string"
+    "location": "string",
+    "latitude": "number",
+    "longitude": "number"
   }
   ```
-- **Response:**
+- **Response**:
   ```json
   {
     "id": "string",
     "name": "string",
     "type": "string",
     "location": "string",
+    "latitude": "number",
+    "longitude": "number",
     "ownerId": "string",
     "createdAt": "string",
     "updatedAt": "string"
   }
   ```
 
-### 5. Delete Market
+### Delete Market
 
-- **URL:** `/api/markets/:id`
-- **Method:** `DELETE`
-- **Description:** Deletes a market by its ID.
-- **Headers:**
-  - `Authorization: Bearer <token>`
-- **Response:**
+- **URL**: `/markets/:id`
+- **Method**: `DELETE`
+- **Headers**: `Authorization: Bearer <token>`
+- **Response**:
   ```json
   {
-    "message": "Market deleted successfully"
+    "id": "string",
+    "name": "string",
+    "type": "string",
+    "location": "string",
+    "latitude": "number",
+    "longitude": "number",
+    "ownerId": "string",
+    "createdAt": "string",
+    "updatedAt": "string"
   }
   ```
 
-### 6. Create Lot
+### Find Nearest Market
 
-- **URL:** `/api/markets/:marketId/lots`
-- **Method:** `POST`
-- **Description:** Creates a new lot in a market.
-- **Headers:**
-  - `Authorization: Bearer <token>`
-- **Request Body:**
+- **URL**: `/markets/nearest-market`
+- **Method**: `GET`
+- **Query Params**: `lat=<latitude>&lon=<longitude>`
+- **Response**:
+  ```json
+  {
+    "id": "string",
+    "name": "string",
+    "type": "string",
+    "location": "string",
+    "latitude": "number",
+    "longitude": "number",
+    "ownerId": "string",
+    "createdAt": "string",
+    "updatedAt": "string"
+  }
+  ```
+
+## Lots
+
+### Create Lot
+
+- **URL**: `/lots`
+- **Method**: `POST`
+- **Headers**: `Authorization: Bearer <token>`
+- **Body**:
   ```json
   {
     "name": "string",
     "details": "string",
     "price": "number",
-    "available": "boolean",
-    "shape": "json",
-    "position": "json"
+    "shape": { ... },
+    "position": { ... },
+    "marketId": "string"
   }
   ```
-- **Response:**
+- **Response**:
   ```json
   {
     "id": "string",
     "name": "string",
     "details": "string",
     "price": "number",
-    "available": "boolean",
-    "shape": "json",
-    "position": "json",
+    "shape": { ... },
+    "position": { ... },
     "marketId": "string",
     "createdAt": "string",
     "updatedAt": "string"
   }
   ```
 
-### 7. Get Lots
+### Get Lots
 
-- **URL:** `/api/markets/:marketId/lots`
-- **Method:** `GET`
-- **Description:** Retrieves all lots in a market.
-- **Headers:**
-  - `Authorization: Bearer <token>`
-- **Response:**
+- **URL**: `/lots`
+- **Method**: `GET`
+- **Headers**: `Authorization: Bearer <token>`
+- **Query Params**: `marketId=<marketId>`
+- **Response**:
   ```json
   [
     {
@@ -176,9 +240,8 @@
       "name": "string",
       "details": "string",
       "price": "number",
-      "available": "boolean",
-      "shape": "json",
-      "position": "json",
+      "shape": { ... },
+      "position": { ... },
       "marketId": "string",
       "createdAt": "string",
       "updatedAt": "string"
@@ -186,164 +249,219 @@
   ]
   ```
 
-### 8. Get Lot By ID
+### Get Lot by ID
 
-- **URL:** `/api/markets/:marketId/lots/:id`
-- **Method:** `GET`
-- **Description:** Retrieves a lot by its ID.
-- **Headers:**
-  - `Authorization: Bearer <token>`
-- **Response:**
+- **URL**: `/lots/:id`
+- **Method**: `GET`
+- **Headers**: `Authorization: Bearer <token>`
+- **Response**:
   ```json
   {
     "id": "string",
     "name": "string",
     "details": "string",
     "price": "number",
-    "available": "boolean",
-    "shape": "json",
-    "position": "json",
+    "shape": { ... },
+    "position": { ... },
     "marketId": "string",
     "createdAt": "string",
     "updatedAt": "string"
   }
   ```
 
-### 9. Update Lot
+### Update Lot
 
-- **URL:** `/api/markets/:marketId/lots/:id`
-- **Method:** `PUT`
-- **Description:** Updates a lot by its ID.
-- **Headers:**
-  - `Authorization: Bearer <token>`
-- **Request Body:**
+- **URL**: `/lots/:id`
+- **Method**: `PUT`
+- **Headers**: `Authorization: Bearer <token>`
+- **Body**:
   ```json
   {
     "name": "string",
     "details": "string",
     "price": "number",
-    "available": "boolean",
-    "shape": "json",
-    "position": "json"
+    "shape": { ... },
+    "position": { ... }
   }
   ```
-- **Response:**
+- **Response**:
   ```json
   {
     "id": "string",
     "name": "string",
     "details": "string",
     "price": "number",
-    "available": "boolean",
-    "shape": "json",
-    "position": "json",
+    "shape": { ... },
+    "position": { ... },
     "marketId": "string",
     "createdAt": "string",
     "updatedAt": "string"
   }
   ```
 
-### 10. Delete Lot
+### Delete Lot
 
-- **URL:** `/api/markets/:marketId/lots/:id`
-- **Method:** `DELETE`
-- **Description:** Deletes a lot by its ID.
-- **Headers:**
-  - `Authorization: Bearer <token>`
-- **Response:**
+- **URL**: `/lots/:id`
+- **Method**: `DELETE`
+- **Headers**: `Authorization: Bearer <token>`
+- **Response**:
   ```json
   {
-    "message": "Lot deleted successfully"
+    "id": "string",
+    "name": "string",
+    "details": "string",
+    "price": "number",
+    "shape": { ... },
+    "position": { ... },
+    "marketId": "string",
+    "createdAt": "string",
+    "updatedAt": "string"
   }
   ```
 
-### 11. Request Booking
+### Check Lot Availability
 
-- **URL:** `/api/bookings`
-- **Method:** `POST`
-- **Description:** Requests a booking for a lot.
-- **Headers:**
-  - `Authorization: Bearer <token>`
-- **Request Body:**
+- **URL**: `/lots/:id/availability`
+- **Method**: `GET`
+- **Query Params**: `date=<date>`
+- **Response**:
   ```json
   {
-    "lotId": "string"
+    "available": true | false
   }
   ```
-- **Response:**
+
+### Book Lot
+
+- **URL**: `/lots/:id/book`
+- **Method**: `POST`
+- **Headers**: `Authorization: Bearer <token>`
+- **Body**:
+  ```json
+  {
+    "date": "string"
+  }
+  ```
+- **Response**:
   ```json
   {
     "id": "string",
     "tenantId": "string",
     "lotId": "string",
-    "status": "string",
+    "status": "PENDING",
+    "date": "string",
     "createdAt": "string",
     "updatedAt": "string"
   }
   ```
 
-### 12. Get Landlord Bookings
+## Bookings
 
-- **URL:** `/api/bookings/landlord`
-- **Method:** `GET`
-- **Description:** Retrieves all bookings for the landlord.
-- **Headers:**
-  - `Authorization: Bearer <token>`
-- **Response:**
+### Request Booking
+
+- **URL**: `/bookings`
+- **Method**: `POST`
+- **Headers**: `Authorization: Bearer <token>`
+- **Body**:
+  ```json
+  {
+    "lotId": "string",
+    "date": "string"
+  }
+  ```
+- **Response**:
+  ```json
+  {
+    "id": "string",
+    "tenantId": "string",
+    "lotId": "string",
+    "status": "PENDING",
+    "date": "string",
+    "createdAt": "string",
+    "updatedAt": "string"
+  }
+  ```
+
+### Get Landlord Bookings
+
+- **URL**: `/bookings/landlord`
+- **Method**: `GET`
+- **Headers**: `Authorization: Bearer <token>`
+- **Response**:
   ```json
   [
     {
       "id": "string",
       "tenantId": "string",
       "lotId": "string",
-      "status": "string",
+      "status": "PENDING | APPROVED | REJECTED | CANCELLED",
+      "date": "string",
       "createdAt": "string",
       "updatedAt": "string",
-      "lot": {
-        "id": "string",
-        "name": "string",
-        "details": "string",
-        "price": "number",
-        "available": "boolean",
-        "shape": "json",
-        "position": "json",
-        "marketId": "string",
-        "createdAt": "string",
-        "updatedAt": "string"
-      }
+      "lot": { ... }
     }
   ]
   ```
 
-### 13. Update Booking Status
+### Get Tenant Bookings
 
-- **URL:** `/api/bookings/:id/status`
-- **Method:** `PUT`
-- **Description:** Updates the status of a booking.
-- **Headers:**
-  - `Authorization: Bearer <token>`
-- **Request Body:**
+- **URL**: `/bookings/tenant`
+- **Method**: `GET`
+- **Headers**: `Authorization: Bearer <token>`
+- **Response**:
+  ```json
+  [
+    {
+      "id": "string",
+      "tenantId": "string",
+      "lotId": "string",
+      "status": "PENDING | APPROVED | REJECTED | CANCELLED",
+      "date": "string",
+      "createdAt": "string",
+      "updatedAt": "string",
+      "lot": { ... }
+    }
+  ]
+  ```
+
+### Update Booking Status
+
+- **URL**: `/bookings/:id/status`
+- **Method**: `PUT`
+- **Headers**: `Authorization: Bearer <token>`
+- **Body**:
   ```json
   {
-    "status": "string"
+    "status": "APPROVED | REJECTED"
   }
   ```
-- **Response:**
+- **Response**:
   ```json
   {
     "id": "string",
     "tenantId": "string",
     "lotId": "string",
-    "status": "string",
+    "status": "APPROVED | REJECTED",
+    "date": "string",
     "createdAt": "string",
     "updatedAt": "string"
   }
   ```
 
-## Error Responses
+### Cancel Booking
 
-- **400 Bad Request:** Invalid input data.
-- **401 Unauthorized:** Authentication failed or token expired.
-- **403 Forbidden:** Access denied.
-- **404 Not Found:** Resource not found.
-- **500 Internal Server Error:** Server encountered an error.
+- **URL**: `/bookings/:id/cancel`
+- **Method**: `PUT`
+- **Headers**: `Authorization: Bearer <token>`
+- **Response**:
+  ```json
+  {
+    "id": "string",
+    "tenantId": "string",
+    "lotId": "string",
+    "status": "CANCELLED",
+    "date": "string",
+    "createdAt": "string",
+    "updatedAt": "string"
+  }
+  ```

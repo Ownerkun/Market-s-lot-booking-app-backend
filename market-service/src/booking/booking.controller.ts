@@ -19,7 +19,29 @@ export class BookingController {
   }
 
   @Put(':id/status')
-  updateBookingStatus(@Request() req, @Param('id') id: string, @Body() dto: UpdateBookingStatusDto) {
-    return this.bookingService.updateBookingStatus(req.user.userId, id, dto);
+  async updateBookingStatus(
+    @Request() req, // Access the request object
+    @Param('id') bookingId: string,
+    @Body('status') status: 'APPROVED' | 'REJECTED',
+  ) {
+    const userId = req.user.userId; // Extract userId from the authenticated user
+    const userRole = req.user.role; // Extract user role from the authenticated user
+    return this.bookingService.updateBookingStatus(bookingId, status, userId, userRole);
   }
+
+  @Get('tenant')
+  async getBookingsByTenant(@Request() req) {
+    const tenantId = req.user.userId;
+    return this.bookingService.getBookingsByTenant(tenantId);
+  }
+
+  @Put(':id/cancel')
+async cancelBooking(
+  @Request() req,
+  @Param('id') bookingId: string,
+) {
+  const userId = req.user.userId; // Extract userId from the authenticated user
+  const userRole = req.user.role; // Extract user role from the authenticated user
+  return this.bookingService.cancelBooking(bookingId, userId, userRole);
+}
 }

@@ -1,26 +1,32 @@
-import { Controller, Get, Post, Body, Param, Put, Delete, Request, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Put, Delete, Request, UseGuards, Query } from '@nestjs/common';
 import { LotService } from './lot.service';
+import { BookingService } from '../booking/booking.service';
 import { CreateLotDto, UpdateLotDto } from './dto/market.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { Role } from './enum/role.enum';
 
-@Controller('markets/:marketId/lots')
+@Controller('lots')
 @UseGuards(JwtAuthGuard)
 export class LotController {
-  constructor(private lotService: LotService) {}
+  constructor(
+    private lotService: LotService,
+    private bookingService: BookingService, // Inject BookingService
+  ) {}
 
   @Post()
-  createLot(@Request() req, @Param('marketId') marketId: string, @Body() dto: CreateLotDto) {
-    const userId = req.user.userId; // Extract userId from the authenticated user
-    const userRole = req.user.role; // Extract user role from the authenticated user
-    return this.lotService.createLot(marketId, dto, userId, userRole);
-  }
+async createLot(@Request() req, @Body() dto: CreateLotDto) {
+  const userId = req.user.userId;
+  const userRole = req.user.role;
+  const marketId = dto.marketId; // Ensure marketId is included in the DTO
+  return this.lotService.createLot(marketId, dto, userId, userRole);
+}
 
   @Get()
-  getLots(@Request() req, @Param('marketId') marketId: string) {
-    const userId = req.user.userId; // Extract userId from the authenticated user
-    const userRole = req.user.role; // Extract user role from the authenticated user
-    return this.lotService.getLots(marketId, userId, userRole);
-  }
+async getLots(@Request() req, @Query('marketId') marketId: string) {
+  const userId = req.user.userId;
+  const userRole = req.user.role;
+  return this.lotService.getLots(marketId, userId, userRole);
+}
 
   @Get(':id')
   getLotById(@Request() req, @Param('id') id: string) {
@@ -41,5 +47,18 @@ export class LotController {
     const userId = req.user.userId; // Extract userId from the authenticated user
     const userRole = req.user.role; // Extract user role from the authenticated user
     return this.lotService.deleteLot(id, userId, userRole);
+  }
+
+  @Get(':id/availability')
+  async checkAvailability(@Param('id') id: string, @Query('date') date: string) {
+    const parsedDate = new Date(date);
+    return this.lotService.checkAvailability(id, parsedDate);
+  }
+
+  @Post(':id/book')
+  async bookLot(@Request() req, @Param('id') id: string, @Body('date') date: string) {
+    const tenantId = req.user.userId;
+    const parsedDate = new Date(date);
+    return this.bookingService.requestBooking(tenantId, { lotId: id, date: parsedDate }); // Use BookingService
   }
 }

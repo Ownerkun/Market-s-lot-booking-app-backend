@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Put, Delete, Request, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Put, Delete, Request, UseGuards, Query, NotFoundException } from '@nestjs/common';
 import { MarketService } from './market.service';
 import { CreateMarketDto, UpdateMarketDto } from './dto/market.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
@@ -40,5 +40,14 @@ export class MarketController {
     const userId = req.user.userId; // Extract userId from the authenticated user
     const userRole = req.user.role; // Extract user role from the authenticated user
     return this.marketService.deleteMarket(id, userId, userRole);
+  }
+  
+  @Get('nearest-market')
+  async findNearestMarket(@Query('lat') lat: number, @Query('lon') lon: number) {
+    const nearestMarket = await this.marketService.findNearestMarket(lat, lon);
+    if (!nearestMarket) {
+      throw new NotFoundException('No markets found near the specified location');
+    }
+    return nearestMarket;
   }
 }
