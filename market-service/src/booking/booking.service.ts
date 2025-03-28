@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateBookingDto, UpdateBookingStatusDto } from './dto/booking.dto';
 import { Role } from 'src/market/enum/role.enum';
@@ -7,32 +7,194 @@ import { Role } from 'src/market/enum/role.enum';
 export class BookingService {
   constructor(private prisma: PrismaService) {}
 
-  async requestBooking(tenantId: string, dto: CreateBookingDto) {
-    // Check if the lot exists
+  private getDatesBetween(startDate: Date, endDate: Date): Date[] {
+    const dates: Date[] = [];
+    const currentDate = new Date(startDate);
+    
+    while (currentDate <= endDate) {
+      dates.push(new Date(currentDate));
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+    
+    return dates;
+  }
+
+  async getLotAvailabilityForMonth(lotId: string, month: number, year: number) {
+    // First, check if the lot exists and is generally available
     const lot = await this.prisma.lot.findUnique({
-      where: { id: dto.lotId },
+      where: { id: lotId },
     });
 
     if (!lot) {
       throw new NotFoundException('Lot not found');
     }
 
-    // Check if the lot is available overall
-  if (!lot.available) {
-    throw new ForbiddenException('Lot is not available for booking');
-  }
+    if (!lot.available) {
+      return { available: false, bookedDates: [] };
+    }
 
-    // Check if the lot is already booked (approved) for the requested date
-    const existingApprovedBooking = await this.prisma.booking.findFirst({
+    // Calculate start and end dates for the requested month
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 0); // Last day of the month
+    
+    // Get all approved bookings for the lot in the given month
+    const approvedBookings = await this.prisma.booking.findMany({
       where: {
-        lotId: dto.lotId,
-        date: dto.date,
-        status: 'APPROVED',
+        lotId: lotId,
+        OR: [
+          {
+            startDate: { lte: endDate },
+            endDate: { gte: startDate },
+            status: 'APPROVED',
+          }
+        ],
       },
     });
+    
+    // Get all dates that are booked in this month
+    const bookedDates: Date[] = [];
+    for (const booking of approvedBookings) {
+      const dates = this.getDatesBetween(
+        booking.startDate < startDate ? startDate : booking.startDate,
+        booking.endDate > endDate ? endDate : booking.endDate
+      );
+      bookedDates.push(...dates);
+    }
+    
+    // Get all lotAvailability entries for the lot in the given month
+    const lotAvailabilities = await this.prisma.lotAvailability.findMany({
+      where: {
+        lotId: lotId,
+        date: {
+          gte: startDate,
+          lte: endDate,
+        },
+      },
+    });
+    
+    const unavailableDates = lotAvailabilities
+      .filter(la => !la.available)
+      .map(la => la.date);
+    
+    // Combine both sources of unavailability
+    const allUnavailableDates = [...new Set([...bookedDates, ...unavailableDates])];
 
-    if (existingApprovedBooking) {
-      throw new ForbiddenException('Lot is already booked for the selected date');
+    const pendingDates = (await this.getPendingDatesForLot(lotId, month, year)).pendingDates;
+    
+    return {
+      available: lot.available,
+      bookedDates: allUnavailableDates,
+      pendingDates: pendingDates,
+    };
+  }
+
+  async checkLotAvailability(lotId: string, startDate: Date, endDate: Date) {
+    // Validate date range
+    if (endDate <= startDate) {
+      throw new BadRequestException('End date must be after start date');
+    }
+
+    // Check if the lot exists
+    const lot = await this.prisma.lot.findUnique({
+      where: { id: lotId },
+    });
+  
+    if (!lot) {
+      throw new NotFoundException('Lot not found');
+    }
+  
+    if (!lot.available) {
+      return { available: false };
+    }
+  
+    // Check for any approved bookings that overlap with the requested period
+    const overlappingApprovedBookings = await this.prisma.booking.findMany({
+      where: {
+        lotId: lotId,
+        status: 'APPROVED',
+        OR: [
+          // Bookings that start within the requested period
+          {
+            startDate: { gte: startDate, lte: endDate },
+          },
+          // Bookings that end within the requested period
+          {
+            endDate: { gte: startDate, lte: endDate },
+          },
+          // Bookings that completely contain the requested period
+          {
+            startDate: { lte: startDate },
+            endDate: { gte: endDate },
+          },
+        ],
+      },
+    });
+  
+    if (overlappingApprovedBookings.length > 0) {
+      return { available: false };
+    }
+  
+    // Check for any pending bookings that overlap
+    const overlappingPendingBookings = await this.prisma.booking.findMany({
+      where: {
+        lotId: lotId,
+        status: 'PENDING',
+        OR: [
+          {
+            startDate: { gte: startDate, lte: endDate },
+          },
+          {
+            endDate: { gte: startDate, lte: endDate },
+          },
+          {
+            startDate: { lte: startDate },
+            endDate: { gte: endDate },
+          },
+        ],
+      },
+    });
+  
+    if (overlappingPendingBookings.length > 0) {
+      return { 
+        available: false,
+        reason: 'There are pending bookings for this period'
+      };
+    }
+  
+    return { available: true };
+  }
+
+  async requestBooking(tenantId: string, dto: CreateBookingDto) {
+    // Validate the period (end date must be after start date)
+    if (dto.endDate <= dto.startDate) {
+      throw new BadRequestException('End date must be after start date');
+    }
+
+    // Check if the lot exists
+    const lot = await this.prisma.lot.findUnique({
+      where: { id: dto.lotId },
+    });
+  
+    if (!lot) {
+      throw new NotFoundException('Lot not found');
+    }
+  
+    // Check if the lot is available overall
+    if (!lot.available) {
+      throw new ForbiddenException('Lot is not available for booking');
+    }
+  
+    // Check availability for the entire period
+    const availability = await this.checkLotAvailability(
+      dto.lotId, 
+      dto.startDate, 
+      dto.endDate
+    );
+
+    if (!availability.available) {
+      throw new ForbiddenException(
+        availability.reason || 'Lot is not available for the selected period'
+      );
     }
 
     // Create the booking
@@ -41,7 +203,8 @@ export class BookingService {
         tenantId,
         lotId: dto.lotId,
         status: 'PENDING',
-        date: dto.date,
+        startDate: dto.startDate,
+        endDate: dto.endDate,
       },
     });
   }
@@ -55,10 +218,18 @@ export class BookingService {
           },
         },
       },
-      include: { lot: true },
+      include: { 
+        lot: {
+          include: {
+            market: true,
+          },
+        },
+      },
+      orderBy: {
+        startDate: 'asc',
+      },
     });
   }
-
 
   async getBookingsByTenant(tenantId: string) {
     return this.prisma.booking.findMany({
@@ -68,14 +239,18 @@ export class BookingService {
       include: {
         lot: true,
       },
+      orderBy: {
+        startDate: 'asc',
+      },
     });
   }
 
   async updateBookingStatus(
     bookingId: string,
     status: 'APPROVED' | 'REJECTED',
-    userId: string, // Add userId parameter
-    userRole: Role, // Add userRole parameter
+    userId: string,
+    userRole: Role,
+    reason?: string
   ) {
     // Check if the user is a landlord
     if (userRole !== Role.LANDLORD) {
@@ -88,7 +263,7 @@ export class BookingService {
       include: {
         lot: {
           include: {
-            market: true, // Include market details to check ownership
+            market: true,
           },
         },
       },
@@ -96,6 +271,11 @@ export class BookingService {
   
     if (!booking) {
       throw new NotFoundException('Booking not found');
+    }
+  
+    // Check if the booking is in PENDING status
+    if (booking.status !== 'PENDING') {
+      throw new BadRequestException('Only pending bookings can be approved or rejected');
     }
   
     // Check if the landlord owns the market where the lot belongs
@@ -103,43 +283,54 @@ export class BookingService {
       throw new ForbiddenException('You do not have permission to update this booking');
     }
   
-    // Update the booking status
+    // Update the booking status and rejection reason if applicable
     const updatedBooking = await this.prisma.booking.update({
       where: { id: bookingId },
-      data: { status },
+      data: { 
+        status,
+        rejectionReason: status === 'REJECTED' ? reason : null 
+      },
     });
   
-    // If the booking is approved, update the LotAvailability table
-    if (status === 'APPROVED') {
-      await this.prisma.lotAvailability.upsert({
-        where: {
-          lotId_date: {
-            lotId: booking.lotId,
-            date: booking.date,
+    // Handle LotAvailability updates for both APPROVED and REJECTED statuses
+    const datesInPeriod = this.getDatesBetween(
+      booking.startDate, 
+      booking.endDate
+    );
+  
+    // Update lot availability based on status
+    await this.prisma.$transaction(
+      datesInPeriod.map(date => 
+        this.prisma.lotAvailability.upsert({
+          where: {
+            lotId_date: {
+              lotId: booking.lotId,
+              date: date,
+            },
           },
-        },
-        update: {
-          available: false, // Mark the lot as unavailable
-        },
-        create: {
-          lotId: booking.lotId,
-          date: booking.date,
-          available: false, // Mark the lot as unavailable
-        },
-      });
-    }
+          update: { 
+            available: status === 'REJECTED' // true if rejected, false if approved
+          },
+          create: {
+            lotId: booking.lotId,
+            date: date,
+            available: status === 'REJECTED', // true if rejected, false if approved
+          },
+        })
+      )
+    );
   
     return updatedBooking;
   }
 
   async cancelBooking(bookingId: string, userId: string, userRole: Role) {
-    // Find the booking and include the lot and market details
+    // Find booking with related data
     const booking = await this.prisma.booking.findUnique({
       where: { id: bookingId },
       include: {
         lot: {
           include: {
-            market: true, // Include market details to check ownership
+            market: true,
           },
         },
       },
@@ -149,35 +340,91 @@ export class BookingService {
       throw new NotFoundException('Booking not found');
     }
   
-    // Check if the user is the tenant or the landlord
-    const isTenant = booking.tenantId === userId;
-    const isLandlord = userRole === Role.LANDLORD && booking.lot.market.ownerId === userId;
-  
-    if (!isTenant && !isLandlord) {
-      throw new ForbiddenException('You do not have permission to cancel this booking');
+    // Check permissions - only landlord who owns the market can cancel
+    if (!(userRole === Role.LANDLORD && booking.lot.market.ownerId === userId)) {
+      throw new ForbiddenException('Only the market owner can cancel bookings');
     }
   
-    // Update the booking status to CANCELLED
+    // Can only cancel APPROVED bookings (not already cancelled/rejected)
+    if (booking.status !== 'APPROVED') {
+      throw new BadRequestException('Only approved bookings can be cancelled');
+    }
+  
+    // Update status to CANCELLED
     const updatedBooking = await this.prisma.booking.update({
       where: { id: bookingId },
       data: { status: 'CANCELLED' },
     });
   
-    // If the booking was APPROVED, mark the lot as available again
-    if (booking.status === 'APPROVED') {
-      await this.prisma.lotAvailability.update({
-        where: {
-          lotId_date: {
-            lotId: booking.lotId,
-            date: booking.date,
+    // Mark all booked dates as available again
+    const datesInPeriod = this.getDatesBetween(
+      booking.startDate, 
+      booking.endDate
+    );
+  
+    // Use transaction to ensure data consistency
+    await this.prisma.$transaction(
+      datesInPeriod.map(date => 
+        this.prisma.lotAvailability.upsert({
+          where: {
+            lotId_date: {
+              lotId: booking.lotId,
+              date: date,
+            },
           },
-        },
-        data: {
-          available: true, // Mark the lot as available
-        },
-      });
-    }
+          update: { available: true },
+          create: {
+            lotId: booking.lotId,
+            date: date,
+            available: true,
+          },
+        })
+      )
+    );
   
     return updatedBooking;
+  }
+
+  async getPendingDatesForLot(lotId: string, month: number, year: number) {
+    // First, check if the lot exists
+    const lot = await this.prisma.lot.findUnique({
+      where: { id: lotId },
+    });
+  
+    if (!lot) {
+      throw new NotFoundException('Lot not found');
+    }
+  
+    // Calculate start and end dates for the requested month
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 0); // Last day of the month
+    
+    // Get all pending bookings for the lot in the given month
+    const pendingBookings = await this.prisma.booking.findMany({
+      where: {
+        lotId: lotId,
+        status: 'PENDING',
+        OR: [
+          {
+            startDate: { lte: endDate },
+            endDate: { gte: startDate },
+          }
+        ],
+      },
+    });
+    
+    // Get all dates that are pending in this month
+    const pendingDates: Date[] = [];
+    for (const booking of pendingBookings) {
+      const dates = this.getDatesBetween(
+        booking.startDate < startDate ? startDate : booking.startDate,
+        booking.endDate > endDate ? endDate : booking.endDate
+      );
+      pendingDates.push(...dates);
+    }
+    
+    return {
+      pendingDates: [...new Set(pendingDates)], // Remove duplicates
+    };
   }
 }

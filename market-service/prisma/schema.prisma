@@ -55,7 +55,9 @@ model Booking {
   tenantId  String 
   lotId     String 
   status    BookingStatus @default(PENDING)
-  date      DateTime
+  startDate DateTime
+  endDate   DateTime
+  rejectionReason String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

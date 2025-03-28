@@ -2,6 +2,16 @@
 
 ## Authentication
 
+All endpoints require JWT authentication using Bearer token in Authorization header.
+
+### Request Header
+
+```json
+{
+  "Authorization": "Bearer <jwt_token>"
+}
+```
+
 ### Register
 
 - **URL**: `/auth/register`
@@ -54,29 +64,25 @@
 
 - **URL**: `/markets`
 - **Method**: `POST`
-- **Headers**: `Authorization: Bearer <token>`
+- **Auth**: Required (LANDLORD only)
 - **Body**:
+
+```json
+{
+  "name": "string",
+  "type": "string",
+  "location": "string",
+  "latitude": "number",
+  "longitude": "number"
+}
+```
+
+- **Response**: Market object
+- **Error Responses**:
   ```json
   {
-    "name": "string",
-    "type": "string",
-    "location": "string",
-    "latitude": "number",
-    "longitude": "number"
-  }
-  ```
-- **Response**:
-  ```json
-  {
-    "id": "string",
-    "name": "string",
-    "type": "string",
-    "location": "string",
-    "latitude": "number",
-    "longitude": "number",
-    "ownerId": "string",
-    "createdAt": "string",
-    "updatedAt": "string"
+    "statusCode": 403,
+    "message": "Invalid ownerId"
   }
   ```
 
@@ -84,100 +90,41 @@
 
 - **URL**: `/markets`
 - **Method**: `GET`
-- **Headers**: `Authorization: Bearer <token>`
-- **Response**:
-  ```json
-  [
-    {
-      "id": "string",
-      "name": "string",
-      "type": "string",
-      "location": "string",
-      "latitude": "number",
-      "longitude": "number",
-      "ownerId": "string",
-      "createdAt": "string",
-      "updatedAt": "string"
-    }
-  ]
-  ```
+- **Auth**: Required
+- **Notes**:
+  - TENANT can see all markets
+  - LANDLORD can only see owned markets
+- **Response**: Array of Market objects
 
 ### Get Market by ID
 
 - **URL**: `/markets/:id`
 - **Method**: `GET`
-- **Headers**: `Authorization: Bearer <token>`
-- **Response**:
-  ```json
-  {
-    "id": "string",
-    "name": "string",
-    "type": "string",
-    "location": "string",
-    "latitude": "number",
-    "longitude": "number",
-    "ownerId": "string",
-    "createdAt": "string",
-    "updatedAt": "string",
-    "lots": [ ... ]
-  }
-  ```
+- **Auth**: Required
+- **Response**: Market object with lots
 
 ### Update Market
 
 - **URL**: `/markets/:id`
 - **Method**: `PUT`
-- **Headers**: `Authorization: Bearer <token>`
-- **Body**:
-  ```json
-  {
-    "name": "string",
-    "type": "string",
-    "location": "string",
-    "latitude": "number",
-    "longitude": "number"
-  }
-  ```
-- **Response**:
-  ```json
-  {
-    "id": "string",
-    "name": "string",
-    "type": "string",
-    "location": "string",
-    "latitude": "number",
-    "longitude": "number",
-    "ownerId": "string",
-    "createdAt": "string",
-    "updatedAt": "string"
-  }
-  ```
+- **Auth**: Required (Market owner only)
+- **Body**: Same as Create Market
+- **Response**: Updated Market object
 
 ### Delete Market
 
 - **URL**: `/markets/:id`
 - **Method**: `DELETE`
-- **Headers**: `Authorization: Bearer <token>`
-- **Response**:
-  ```json
-  {
-    "id": "string",
-    "name": "string",
-    "type": "string",
-    "location": "string",
-    "latitude": "number",
-    "longitude": "number",
-    "ownerId": "string",
-    "createdAt": "string",
-    "updatedAt": "string"
-  }
-  ```
+- **Auth**: Required (Market owner only)
+- **Response**: Deleted Market object
 
 ### Find Nearest Market
 
 - **URL**: `/markets/nearest-market`
 - **Method**: `GET`
-- **Query Params**: `lat=<latitude>&lon=<longitude>`
+- **Query Params**:
+  - `lat`: number (latitude)
+  - `lon`: number (longitude)
 - **Response**:
   ```json
   {
@@ -187,9 +134,14 @@
     "location": "string",
     "latitude": "number",
     "longitude": "number",
-    "ownerId": "string",
-    "createdAt": "string",
-    "updatedAt": "string"
+    "ownerId": "string"
+  }
+  ```
+- **Error Response**:
+  ```json
+  {
+    "statusCode": 404,
+    "message": "No markets found near the specified location"
   }
   ```
 
@@ -199,135 +151,74 @@
 
 - **URL**: `/lots`
 - **Method**: `POST`
-- **Headers**: `Authorization: Bearer <token>`
+- **Auth**: Required (Market owner only)
 - **Body**:
-  ```json
-  {
-    "name": "string",
-    "details": "string",
-    "price": "number",
-    "shape": { ... },
-    "position": { ... },
-    "marketId": "string"
-  }
-  ```
-- **Response**:
-  ```json
-  {
-    "id": "string",
-    "name": "string",
-    "details": "string",
-    "price": "number",
-    "shape": { ... },
-    "position": { ... },
-    "marketId": "string",
-    "createdAt": "string",
-    "updatedAt": "string"
-  }
-  ```
+
+```json
+{
+  "name": "string",
+  "details": "string",
+  "price": "number",
+  "shape": "object",
+  "position": "object",
+  "marketId": "string"
+}
+```
+
+- **Response**: Created Lot object
 
 ### Get Lots
 
 - **URL**: `/lots`
 - **Method**: `GET`
-- **Headers**: `Authorization: Bearer <token>`
-- **Query Params**: `marketId=<marketId>`
-- **Response**:
-  ```json
-  [
-    {
-      "id": "string",
-      "name": "string",
-      "details": "string",
-      "price": "number",
-      "shape": { ... },
-      "position": { ... },
-      "marketId": "string",
-      "createdAt": "string",
-      "updatedAt": "string"
-    }
-  ]
-  ```
+- **Auth**: Required
+- **Query Params**: `marketId`
+- **Response**: Array of Lot objects
 
 ### Get Lot by ID
 
 - **URL**: `/lots/:id`
 - **Method**: `GET`
-- **Headers**: `Authorization: Bearer <token>`
-- **Response**:
-  ```json
-  {
-    "id": "string",
-    "name": "string",
-    "details": "string",
-    "price": "number",
-    "shape": { ... },
-    "position": { ... },
-    "marketId": "string",
-    "createdAt": "string",
-    "updatedAt": "string"
-  }
-  ```
+- **Auth**: Required
+- **Response**: Lot object
 
 ### Update Lot
 
 - **URL**: `/lots/:id`
 - **Method**: `PUT`
-- **Headers**: `Authorization: Bearer <token>`
+- **Auth**: Required (Market owner only)
 - **Body**:
-  ```json
-  {
-    "name": "string",
-    "details": "string",
-    "price": "number",
-    "shape": { ... },
-    "position": { ... }
-  }
-  ```
-- **Response**:
-  ```json
-  {
-    "id": "string",
-    "name": "string",
-    "details": "string",
-    "price": "number",
-    "shape": { ... },
-    "position": { ... },
-    "marketId": "string",
-    "createdAt": "string",
-    "updatedAt": "string"
-  }
-  ```
+
+```json
+{
+  "name": "string",
+  "details": "string",
+  "price": "number",
+  "available": "boolean",
+  "shape": "object",
+  "position": "object"
+}
+```
+
+- **Response**: Updated Lot object
 
 ### Delete Lot
 
 - **URL**: `/lots/:id`
 - **Method**: `DELETE`
-- **Headers**: `Authorization: Bearer <token>`
-- **Response**:
-  ```json
-  {
-    "id": "string",
-    "name": "string",
-    "details": "string",
-    "price": "number",
-    "shape": { ... },
-    "position": { ... },
-    "marketId": "string",
-    "createdAt": "string",
-    "updatedAt": "string"
-  }
-  ```
+- **Auth**: Required (Market owner only)
+- **Response**: Deleted Lot object
 
 ### Check Lot Availability
 
 - **URL**: `/lots/:id/availability`
 - **Method**: `GET`
-- **Query Params**: `date=<date>`
+- **Query Params**: `date` (YYYY-MM-DD)
 - **Response**:
   ```json
   {
-    "available": true | false
+    "available": "boolean",
+    "reason": "string" // Only present when not available due to pending booking
   }
   ```
 
@@ -335,25 +226,16 @@
 
 - **URL**: `/lots/:id/book`
 - **Method**: `POST`
-- **Headers**: `Authorization: Bearer <token>`
+- **Auth**: Required (TENANT only)
 - **Body**:
-  ```json
-  {
-    "date": "string"
-  }
-  ```
-- **Response**:
-  ```json
-  {
-    "id": "string",
-    "tenantId": "string",
-    "lotId": "string",
-    "status": "PENDING",
-    "date": "string",
-    "createdAt": "string",
-    "updatedAt": "string"
-  }
-  ```
+
+```json
+{
+  "date": "string" // YYYY-MM-DD
+}
+```
+
+- **Response**: Created Booking object
 
 ## Bookings
 
@@ -361,90 +243,55 @@
 
 - **URL**: `/bookings`
 - **Method**: `POST`
-- **Headers**: `Authorization: Bearer <token>`
+- **Auth**: Required (TENANT only)
 - **Body**:
-  ```json
-  {
-    "lotId": "string",
-    "date": "string"
-  }
-  ```
-- **Response**:
-  ```json
-  {
-    "id": "string",
-    "tenantId": "string",
-    "lotId": "string",
-    "status": "PENDING",
-    "date": "string",
-    "createdAt": "string",
-    "updatedAt": "string"
-  }
-  ```
+
+```json
+{
+  "lotId": "string",
+  "date": "string" // YYYY-MM-DD
+}
+```
+
+- **Response**: Created Booking object
 
 ### Get Landlord Bookings
 
 - **URL**: `/bookings/landlord`
 - **Method**: `GET`
-- **Headers**: `Authorization: Bearer <token>`
-- **Response**:
-  ```json
-  [
-    {
-      "id": "string",
-      "tenantId": "string",
-      "lotId": "string",
-      "status": "PENDING | APPROVED | REJECTED | CANCELLED",
-      "date": "string",
-      "createdAt": "string",
-      "updatedAt": "string",
-      "lot": { ... }
-    }
-  ]
-  ```
+- **Auth**: Required (LANDLORD only)
+- **Response**: Array of Booking objects with lot details
 
 ### Get Tenant Bookings
 
 - **URL**: `/bookings/tenant`
 - **Method**: `GET`
-- **Headers**: `Authorization: Bearer <token>`
-- **Response**:
-  ```json
-  [
-    {
-      "id": "string",
-      "tenantId": "string",
-      "lotId": "string",
-      "status": "PENDING | APPROVED | REJECTED | CANCELLED",
-      "date": "string",
-      "createdAt": "string",
-      "updatedAt": "string",
-      "lot": { ... }
-    }
-  ]
-  ```
+- **Auth**: Required (TENANT only)
+- **Response**: Array of Booking objects with lot details
 
 ### Update Booking Status
 
 - **URL**: `/bookings/:id/status`
 - **Method**: `PUT`
-- **Headers**: `Authorization: Bearer <token>`
+- **Auth**: Required (LANDLORD only)
 - **Body**:
   ```json
   {
-    "status": "APPROVED | REJECTED"
+    "status": "APPROVED" | "REJECTED"
   }
   ```
-- **Response**:
+- **Response**: Updated Booking object
+- **Error Responses**:
   ```json
   {
-    "id": "string",
-    "tenantId": "string",
-    "lotId": "string",
-    "status": "APPROVED | REJECTED",
-    "date": "string",
-    "createdAt": "string",
-    "updatedAt": "string"
+    "statusCode": 403,
+    "message": "Only landlords can update booking status"
+  }
+  ```
+  ```json
+  {
+    "statusCode": 403,
+    "message": "You do not have permission to update this booking"
   }
   ```
 
@@ -452,16 +299,42 @@
 
 - **URL**: `/bookings/:id/cancel`
 - **Method**: `PUT`
-- **Headers**: `Authorization: Bearer <token>`
+- **Auth**: Required (Booking tenant or landlord only)
+- **Response**: Updated Booking object with status "CANCELLED"
+- **Error Responses**:
+  ```json
+  {
+    "statusCode": 403,
+    "message": "You do not have permission to cancel this booking"
+  }
+  ```
+
+### Check Lot Monthly Availability
+
+- **URL**: `/bookings/lots/:lotId/availability-month`
+- **Method**: `GET`
+- **Query Params**:
+  - `month`: number (1-12)
+  - `year`: number
 - **Response**:
   ```json
   {
-    "id": "string",
-    "tenantId": "string",
-    "lotId": "string",
-    "status": "CANCELLED",
-    "date": "string",
-    "createdAt": "string",
-    "updatedAt": "string"
+    "available": "boolean",
+    "bookedDates": "Date[]",
+    "pendingDates": "Date[]"
+  }
+  ```
+
+### Get Pending Dates
+
+- **URL**: `/bookings/lots/:lotId/pending-dates`
+- **Method**: `GET`
+- **Query Params**:
+  - `month`: number (1-12)
+  - `year`: number
+- **Response**:
+  ```json
+  {
+    "pendingDates": "Date[]"
   }
   ```

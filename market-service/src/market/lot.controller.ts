@@ -56,9 +56,28 @@ async getLots(@Request() req, @Query('marketId') marketId: string) {
   }
 
   @Post(':id/book')
-  async bookLot(@Request() req, @Param('id') id: string, @Body('date') date: string) {
-    const tenantId = req.user.userId;
-    const parsedDate = new Date(date);
-    return this.bookingService.requestBooking(tenantId, { lotId: id, date: parsedDate }); // Use BookingService
+async bookLot(
+  @Request() req, 
+  @Param('id') id: string,
+  @Body() body: { date: string } | { startDate: string, endDate: string }
+) {
+  const tenantId = req.user.userId;
+  
+  if ('date' in body) {
+    // Single date booking
+    const parsedDate = new Date(body.date);
+    return this.bookingService.requestBooking(tenantId, {
+      lotId: id,
+      startDate: parsedDate,
+      endDate: parsedDate
+    });
+  } else {
+    // Date range booking
+    return this.bookingService.requestBooking(tenantId, {
+      lotId: id,
+      startDate: new Date(body.startDate),
+      endDate: new Date(body.endDate)
+    });
   }
+}
 }
