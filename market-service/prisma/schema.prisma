@@ -51,17 +51,18 @@ model LotAvailability {
 }
 
 model Booking {
-  id        String   @id @default(uuid())
-  tenantId  String 
-  lotId     String 
-  status    BookingStatus @default(PENDING)
-  startDate DateTime
-  endDate   DateTime
+  id              String   @id @default(uuid())
+  tenantId        String 
+  lotId           String 
+  status          BookingStatus @default(PENDING)
+  startDate       DateTime
+  endDate         DateTime
+  isOneDay        Boolean  @default(false)  // Add this field
   rejectionReason String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-  lot       Lot      @relation(fields: [lotId], references: [id])
+  lot             Lot      @relation(fields: [lotId], references: [id])
 }
 
 enum BookingStatus {

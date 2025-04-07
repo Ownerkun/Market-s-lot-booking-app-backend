@@ -90,8 +90,8 @@ export class BookingService {
 
   async checkLotAvailability(lotId: string, startDate: Date, endDate: Date) {
     // Validate date range
-    if (endDate <= startDate) {
-      throw new BadRequestException('End date must be after start date');
+    if (startDate > endDate) {
+      throw new BadRequestException('End date must not be before start date');
     }
 
     // Check if the lot exists
@@ -107,24 +107,27 @@ export class BookingService {
       return { available: false };
     }
   
-    // Check for any approved bookings that overlap with the requested period
+    // For one-day bookings, we need to check if there are any bookings that overlap with the entire day
+    const dayStart = new Date(startDate);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(endDate);
+    dayEnd.setHours(23, 59, 59, 999);
+
+    // Check for any approved bookings that overlap
     const overlappingApprovedBookings = await this.prisma.booking.findMany({
       where: {
         lotId: lotId,
         status: 'APPROVED',
         OR: [
-          // Bookings that start within the requested period
           {
-            startDate: { gte: startDate, lte: endDate },
+            startDate: { gte: dayStart, lte: dayEnd },
           },
-          // Bookings that end within the requested period
           {
-            endDate: { gte: startDate, lte: endDate },
+            endDate: { gte: dayStart, lte: dayEnd },
           },
-          // Bookings that completely contain the requested period
           {
-            startDate: { lte: startDate },
-            endDate: { gte: endDate },
+            startDate: { lte: dayStart },
+            endDate: { gte: dayEnd },
           },
         ],
       },
@@ -165,9 +168,15 @@ export class BookingService {
   }
 
   async requestBooking(tenantId: string, dto: CreateBookingDto) {
-    // Validate the period (end date must be after start date)
-    if (dto.endDate <= dto.startDate) {
-      throw new BadRequestException('End date must be after start date');
+    // Handle one-day booking
+    if (dto.isOneDay) {
+      dto.endDate = new Date(dto.startDate);
+      dto.endDate.setHours(23, 59, 59, 999); // Set to end of the same day
+    }
+
+    // Validate the period (end date must be after or equal to start date for one-day bookings)
+    if (!dto.isOneDay && dto.endDate <= dto.startDate) {
+      throw new BadRequestException('End date must be after start date for multi-day bookings');
     }
 
     // Check if the lot exists
@@ -205,6 +214,7 @@ export class BookingService {
         status: 'PENDING',
         startDate: dto.startDate,
         endDate: dto.endDate,
+        isOneDay: dto.isOneDay || false,
       },
     });
   }
