@@ -60,7 +60,7 @@ export class AuthController {
   @Put('profile/:userId')
   async updateProfile(
     @Param('userId') userId: string,
-    @Body() profileData: any, // You can create a DTO for this
+    @Body() profileData: any,
   ) {
     return this.authService.updateProfile(
       userId,

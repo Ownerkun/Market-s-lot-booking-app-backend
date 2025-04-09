@@ -6,6 +6,8 @@ import { MarketService } from './market.service';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { JwtStrategy } from './strategies/jwt.strategies';
 import { HttpModule } from '@nestjs/axios';
+import { PrismaService } from '../prisma/prisma.service';
+import { MarketTagController } from './market-tag.controller';
 
 @Module({
   imports: [
@@ -16,7 +18,7 @@ import { HttpModule } from '@nestjs/axios';
       signOptions: { expiresIn: '1h' },
     }),
   ],
-  controllers: [MarketController],
-  providers: [MarketService, JwtAuthGuard, JwtStrategy],
+  controllers: [MarketController, MarketTagController],
+  providers: [MarketService, JwtAuthGuard, JwtStrategy, PrismaService],
 })
 export class MarketModule {}

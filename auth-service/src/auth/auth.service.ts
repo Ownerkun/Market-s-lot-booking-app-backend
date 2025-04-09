@@ -83,7 +83,7 @@ export class AuthService {
     firstName?: string,
     lastName?: string,
     birthDate?: Date | string,
-    profilePicture?: string, // Assuming you store the URL of the profile picture
+    profilePicture?: string,
   ) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },

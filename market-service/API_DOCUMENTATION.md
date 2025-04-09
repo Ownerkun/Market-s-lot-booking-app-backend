@@ -145,6 +145,68 @@ All endpoints require JWT authentication using Bearer token in Authorization hea
   }
   ```
 
+## Market Tags
+
+### Create Tag
+
+- **URL**: `/market-tags`
+- **Method**: `POST`
+- **Auth**: Required
+- **Body**:
+  ```json
+  {
+    "name": "string"
+  }
+  ```
+- **Response**: Created MarketTag object
+
+### Get Tags
+
+- **URL**: `/market-tags`
+- **Method**: `GET`
+- **Auth**: Required
+- **Response**: Array of MarketTag objects
+
+### Update Tag
+
+- **URL**: `/market-tags/:id`
+- **Method**: `PUT`
+- **Auth**: Required
+- **Body**:
+  ```json
+  {
+    "name": "string"
+  }
+  ```
+- **Response**: Updated MarketTag object
+
+### Delete Tag
+
+- **URL**: `/market-tags/:id`
+- **Method**: `DELETE`
+- **Auth**: Required
+- **Response**: Deleted MarketTag object
+- **Error Response**:
+  ```json
+  {
+    "statusCode": 403,
+    "message": "Cannot delete system tags"
+  }
+  ```
+
+### Assign Tags to Market
+
+- **URL**: `/market-tags/:marketId/assign-tags`
+- **Method**: `POST`
+- **Auth**: Required
+- **Body**:
+  ```json
+  {
+    "tagIds": "string[]"
+  }
+  ```
+- **Response**: Updated Market object with tags
+
 ## Lots
 
 ### Create Lot
@@ -237,78 +299,6 @@ All endpoints require JWT authentication using Bearer token in Authorization hea
 
 - **Response**: Created Booking object
 
-## Bookings
-
-### Request Booking
-
-- **URL**: `/bookings`
-- **Method**: `POST`
-- **Auth**: Required (TENANT only)
-- **Body**:
-
-```json
-{
-  "lotId": "string",
-  "date": "string" // YYYY-MM-DD
-}
-```
-
-- **Response**: Created Booking object
-
-### Get Landlord Bookings
-
-- **URL**: `/bookings/landlord`
-- **Method**: `GET`
-- **Auth**: Required (LANDLORD only)
-- **Response**: Array of Booking objects with lot details
-
-### Get Tenant Bookings
-
-- **URL**: `/bookings/tenant`
-- **Method**: `GET`
-- **Auth**: Required (TENANT only)
-- **Response**: Array of Booking objects with lot details
-
-### Update Booking Status
-
-- **URL**: `/bookings/:id/status`
-- **Method**: `PUT`
-- **Auth**: Required (LANDLORD only)
-- **Body**:
-  ```json
-  {
-    "status": "APPROVED" | "REJECTED"
-  }
-  ```
-- **Response**: Updated Booking object
-- **Error Responses**:
-  ```json
-  {
-    "statusCode": 403,
-    "message": "Only landlords can update booking status"
-  }
-  ```
-  ```json
-  {
-    "statusCode": 403,
-    "message": "You do not have permission to update this booking"
-  }
-  ```
-
-### Cancel Booking
-
-- **URL**: `/bookings/:id/cancel`
-- **Method**: `PUT`
-- **Auth**: Required (Booking tenant or landlord only)
-- **Response**: Updated Booking object with status "CANCELLED"
-- **Error Responses**:
-  ```json
-  {
-    "statusCode": 403,
-    "message": "You do not have permission to cancel this booking"
-  }
-  ```
-
 ### Check Lot Monthly Availability
 
 - **URL**: `/bookings/lots/:lotId/availability-month`
@@ -336,5 +326,86 @@ All endpoints require JWT authentication using Bearer token in Authorization hea
   ```json
   {
     "pendingDates": "Date[]"
+  }
+  ```
+
+## Bookings
+
+### Request Booking
+
+- **URL**: `/bookings`
+- **Method**: `POST`
+- **Auth**: Required (TENANT only)
+- **Body**:
+  ```json
+  {
+    "lotId": "string",
+    "startDate": "string", // YYYY-MM-DD
+    "endDate": "string", // YYYY-MM-DD
+    "isOneDay": "boolean" // Optional, for single-day bookings
+  }
+  ```
+- **Response**: Created Booking object
+
+### Get Landlord Bookings
+
+- **URL**: `/bookings/landlord`
+- **Method**: `GET`
+- **Auth**: Required (LANDLORD only)
+- **Response**: Array of Booking objects with lot and market details
+
+### Get Tenant Bookings
+
+- **URL**: `/bookings/tenant`
+- **Method**: `GET`
+- **Auth**: Required (TENANT only)
+- **Response**: Array of Booking objects with lot details
+
+### Update Booking Status
+
+- **URL**: `/bookings/:id/status`
+- **Method**: `PUT`
+- **Auth**: Required (LANDLORD only)
+- **Body**:
+  ```json
+  {
+    "status": "APPROVED | REJECTED",
+    "reason": "string" // Optional, required when rejecting
+  }
+  ```
+- **Response**: Updated Booking object
+
+### Cancel Booking
+
+- **URL**: `/bookings/:id/cancel`
+- **Method**: `PUT`
+- **Auth**: Required (Market owner only)
+- **Response**: Updated Booking object with status "CANCELLED"
+- **Error Responses**:
+  ```json
+  {
+    "statusCode": 403,
+    "message": "Only the market owner can cancel bookings"
+  }
+  ```
+  ```json
+  {
+    "statusCode": 400,
+    "message": "Only approved bookings can be cancelled"
+  }
+  ```
+
+### Check Lot Availability
+
+- **URL**: `/bookings/:lotId/availability`
+- **Method**: `GET`
+- **Query Params**:
+  - `startDate`: string (YYYY-MM-DD)
+  - `endDate`: string (YYYY-MM-DD)
+- **Response**:
+  ```json
+  {
+    "available": "boolean",
+    "reason": "string" // Only present when not available due to pending booking
   }
   ```

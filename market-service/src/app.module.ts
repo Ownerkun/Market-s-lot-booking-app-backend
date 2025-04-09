@@ -6,9 +6,10 @@ import { LotModule } from './market/lot.module';
 import { HttpModule } from '@nestjs/axios';
 import { BookingService } from './booking/booking.service';
 import { BookingController } from './booking/booking.controller';
+import { MarketModule } from './market/market.module';
 
 @Module({
-  imports: [LotModule, HttpModule],
+  imports: [LotModule, HttpModule, MarketModule],
   controllers: [MarketController, BookingController],
   providers: [MarketService, PrismaService, BookingService],
 })

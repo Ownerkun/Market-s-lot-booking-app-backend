@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateMarketDto, UpdateMarketDto } from './dto/market.dto';
+import { CreateMarketDto, UpdateMarketDto, CreateMarketTagDto, UpdateMarketTagDto} from './dto/market.dto';
 import { Role } from './enum/role.enum';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
@@ -25,7 +25,7 @@ export class MarketService {
   }
 
   async createMarket(dto: CreateMarketDto) {
-    return this.prisma.market.create({
+    const market = await this.prisma.market.create({
       data: {
         name: dto.name,
         type: dto.type,
@@ -35,6 +35,12 @@ export class MarketService {
         ownerId: dto.ownerId,
       },
     });
+
+    if (dto.tagIds && dto.tagIds.length > 0) {
+      await this.assignTagsToMarket(market.id, dto.tagIds);
+    }
+
+    return market;
   }
 
   async getMarkets(userId: string, userRole: Role) {
@@ -143,5 +149,70 @@ export class MarketService {
     }
 
     return nearestMarket;
+  }
+
+  async createTag(dto: CreateMarketTagDto) {
+    return this.prisma.marketTag.create({
+      data: {
+        name: dto.name,
+        isSystem: false,
+      },
+    });
+  }
+
+  async getTags() {
+    return this.prisma.marketTag.findMany();
+  }
+
+  async updateTag(id: string, dto: UpdateMarketTagDto) {
+    return this.prisma.marketTag.update({
+      where: { id },
+      data: dto,
+    });
+  }
+  
+  async deleteTag(id: string) {
+    const tag = await this.prisma.marketTag.findUnique({
+      where: { id },
+    });
+  
+    if (tag?.isSystem) {
+      throw new ForbiddenException('Cannot delete system tags');
+    }
+  
+    return this.prisma.marketTag.delete({
+      where: { id },
+    });
+  }
+
+  async assignTagsToMarket(marketId: string, tagIds: string[]) {
+    const market = await this.prisma.market.findUnique({
+      where: { id: marketId },
+    });
+    
+    if (!market) {
+      throw new NotFoundException('Market not found');
+    }
+
+    await this.prisma.market.update({
+      where: { id: marketId },
+      data: {
+        tags: {
+          set: [],
+        },
+      },
+    });
+
+    return this.prisma.market.update({
+      where: { id: marketId },
+      data: {
+        tags: {
+          connect: tagIds.map(id => ({ id })),
+        },
+      },
+      include: {
+        tags: true,
+      },
+    });
   }
 }

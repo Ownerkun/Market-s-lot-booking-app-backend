@@ -1,4 +1,4 @@
-// market.dto.ts
+import { IsString, IsArray, IsOptional } from 'class-validator';
 export class CreateMarketDto {
     name: string;
     type: string;
@@ -6,6 +6,10 @@ export class CreateMarketDto {
     latitude?: number;
     longitude?: number;
     ownerId: string;
+
+    @IsArray()
+    @IsOptional()
+    tagIds?: string[];
   }
   
   export class UpdateMarketDto {
@@ -36,3 +40,18 @@ export class CreateMarketDto {
     shape?: any; // JSON object for polygon coordinates
     position?: any; // JSON object for position (x, y)
   }
+
+  export class CreateMarketTagDto {
+  name: string;
+}
+
+export class UpdateMarketTagDto {
+  @IsOptional()
+  name?: string;
+}
+
+export class AssignMarketTagsDto {
+  @IsArray()
+  @IsString({ each: true })
+  tagIds: string[];
+}
