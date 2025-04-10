@@ -62,12 +62,11 @@ export class MarketService {
 
   async getMarkets(userId: string, userRole: Role) {
     if (userRole === Role.TENANT) {
-      // Tenants can see all markets
-      return this.prisma.market.findMany();
+      return this.prisma.market.findMany({include: { tags: true }});
     } else {
-      // Owners can only see their own markets
       return this.prisma.market.findMany({
         where: { ownerId: userId },
+        include: { tags: true },
       });
     }
   }
@@ -75,7 +74,7 @@ export class MarketService {
   async getMarketById(id: string, userId: string, userRole: Role) {
     const market = await this.prisma.market.findUnique({
       where: { id },
-      include: { lots: true },
+      include: { lots: true, tags: true },
     });
 
     if (!market) {
