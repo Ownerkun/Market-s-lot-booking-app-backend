@@ -25,21 +25,34 @@ export class MarketService {
   }
 
   async createMarket(dto: CreateMarketDto) {
+    // First validate all tag IDs exist
+    if (dto.tagIds && dto.tagIds.length > 0) {
+      const existingTags = await this.prisma.marketTag.findMany({
+        where: { id: { in: dto.tagIds } },
+      });
+      
+      if (existingTags.length !== dto.tagIds.length) {
+        throw new NotFoundException('One or more tags not found');
+      }
+    }
+  
+    // Create market with tags if provided
     const market = await this.prisma.market.create({
       data: {
         name: dto.name,
-        type: dto.type,
         location: dto.location,
         latitude: dto.latitude,
         longitude: dto.longitude,
         ownerId: dto.ownerId,
+        tags: dto.tagIds ? {
+          connect: dto.tagIds.map(id => ({ id }))
+        } : undefined,
+      },
+      include: {
+        tags: true, // Include tags in the response
       },
     });
-
-    if (dto.tagIds && dto.tagIds.length > 0) {
-      await this.assignTagsToMarket(market.id, dto.tagIds);
-    }
-
+  
     return market;
   }
 
@@ -72,28 +85,48 @@ export class MarketService {
     return market;
   }
 
-  async updateMarket(id: string, dto: UpdateMarketDto, userId: string, userRole: Role) {
+  async updateMarket(
+    id: string, 
+    dto: UpdateMarketDto, 
+    userId: string, 
+    userRole: Role
+  ) {
     const market = await this.prisma.market.findUnique({
       where: { id },
+      include: { tags: true }, // Include current tags
     });
-
+  
     if (!market) {
       throw new NotFoundException('Market not found');
     }
-
+  
     if (userRole === Role.LANDLORD && market.ownerId !== userId) {
       throw new ForbiddenException('You do not have permission to update this market');
     }
-
-    return this.prisma.market.update({
+  
+    // First update the basic market info
+    const updatedMarket = await this.prisma.market.update({
       where: { id },
       data: {
         name: dto.name,
-        type: dto.type,
         location: dto.location,
         latitude: dto.latitude,
         longitude: dto.longitude,
         ownerId: dto.ownerId,
+        // Don't update tags here - we'll handle them separately
+      },
+    });
+  
+    // If tagIds are provided in the DTO, update the tags
+    if (dto.tagIds) {
+      await this.assignTagsToMarket(id, dto.tagIds);
+    }
+  
+    // Return the market with updated tags
+    return this.prisma.market.findUnique({
+      where: { id },
+      include: {
+        tags: true, // Include tags in the response
       },
     });
   }
@@ -184,35 +217,39 @@ export class MarketService {
       where: { id },
     });
   }
+  
+  // Update the assignTagsToMarket method to handle tag assignment:
+async assignTagsToMarket(marketId: string, tagIds: string[]) {
+  // First verify the market exists
+  const market = await this.prisma.market.findUnique({
+    where: { id: marketId },
+  });
+  
+  if (!market) {
+    throw new NotFoundException('Market not found');
+  }
 
-  async assignTagsToMarket(marketId: string, tagIds: string[]) {
-    const market = await this.prisma.market.findUnique({
-      where: { id: marketId },
-    });
-    
-    if (!market) {
-      throw new NotFoundException('Market not found');
-    }
-
-    await this.prisma.market.update({
+  // Clear existing tags and assign new ones in a transaction
+  return this.prisma.$transaction([
+    this.prisma.market.update({
       where: { id: marketId },
       data: {
         tags: {
-          set: [],
+          set: [], // Clear all existing tags
         },
       },
-    });
-
-    return this.prisma.market.update({
+    }),
+    this.prisma.market.update({
       where: { id: marketId },
       data: {
         tags: {
-          connect: tagIds.map(id => ({ id })),
+          connect: tagIds.map(id => ({ id })), // Connect new tags
         },
       },
       include: {
-        tags: true,
+        tags: true, // Include tags in the response
       },
-    });
-  }
+    }),
+  ]).then((results) => results[1]); // Return the second result (with tags)
+}
 }

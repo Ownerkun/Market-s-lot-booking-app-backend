@@ -1,25 +1,28 @@
 import { IsString, IsArray, IsOptional } from 'class-validator';
 export class CreateMarketDto {
-    name: string;
-    type: string;
-    location: string;
-    latitude?: number;
-    longitude?: number;
-    ownerId: string;
+  name: string;
+  location: string;
+  latitude?: number;
+  longitude?: number;
+  ownerId: string;
 
-    @IsArray()
-    @IsOptional()
-    tagIds?: string[];
-  }
+  @IsArray()
+  @IsOptional()
+  tagIds?: string[];
+}
   
-  export class UpdateMarketDto {
-    name?: string;
-    type?: string;
-    location?: string;
-    latitude?: number;
-    longitude?: number;
-    ownerId?: string;
-  }
+export class UpdateMarketDto {
+  name?: string;
+  location?: string;
+  latitude?: number;
+  longitude?: number;
+  ownerId?: string;
+
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  tagIds?: string[];
+}
   
   // lot.dto.ts
   export class CreateLotDto {

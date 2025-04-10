@@ -11,15 +11,15 @@ datasource db {
 model Market {
   id        String @id @default(uuid())
   name      String
-  type      String
   location  String
   latitude  Float?
   longitude Float?
-  lots      Lot[]
-  tags      MarketTag[]
   ownerId   String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  
+  tags      MarketTag[]
+  lots      Lot[]
 }
 
 model MarketTag {
@@ -27,6 +27,7 @@ model MarketTag {
   name      String   @unique
   markets   Market[]
   isSystem  Boolean  @default(false) // System tags can't be deleted
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
