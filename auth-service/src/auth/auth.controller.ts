@@ -1,7 +1,7 @@
-import { Controller, Post, Body, UsePipes, ValidationPipe, HttpCode, HttpStatus, UnauthorizedException, Get, Param, NotFoundException, UseGuards, Put } from '@nestjs/common';
+import { Controller, Post, Body, UsePipes, ValidationPipe, HttpCode, HttpStatus, UnauthorizedException, Get, Param, NotFoundException, UseGuards, Put, Request } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { RegisterDto, LoginDto } from '../dto/auth.dto';
+import { RegisterDto, LoginDto, ChangePasswordDto } from '../dto/auth.dto';
 import { JwtService } from '@nestjs/jwt';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
@@ -24,6 +24,14 @@ export class AuthController {
   @UsePipes(new ValidationPipe())
   async login(@Body() loginDto: LoginDto) {
     return this.authService.login(loginDto.email, loginDto.password);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('change-password')
+  @HttpCode(HttpStatus.OK)
+  async changePassword(@Request() req, @Body() changePasswordDto: ChangePasswordDto) {
+    const userId = req.user.userId;
+    return this.authService.changePassword(userId, changePasswordDto.currentPassword, changePasswordDto.newPassword);
   }
 
   @Post('validate-token')

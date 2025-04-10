@@ -57,6 +57,25 @@ export class AuthService {
     };
   }
 
+  async changePassword(userId: string, currentPassword: string, newPassword: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new HttpException('User not found', HttpStatus.NOT_FOUND);
+
+    const isMatch = await bcryptjs.compare(currentPassword, user.password);
+    if (!isMatch) throw new HttpException('Invalid credentials', HttpStatus.UNAUTHORIZED);
+
+    const hashedNewPassword = await bcryptjs.hash(newPassword, 10);
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { password: hashedNewPassword },
+    });
+
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Password changed successfully',
+    };
+  }
+
   async getProfile(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
