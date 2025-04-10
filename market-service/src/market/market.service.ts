@@ -25,31 +25,35 @@ export class MarketService {
   }
 
   async createMarket(dto: CreateMarketDto) {
-    // First validate all tag IDs exist
+    // First create the market
+    const marketData: any = {
+      name: dto.name,
+      location: dto.location,
+      latitude: dto.latitude,
+      longitude: dto.longitude,
+      ownerId: dto.ownerId,
+    };
+  
+    // Only add tags if they exist
     if (dto.tagIds && dto.tagIds.length > 0) {
+      // Verify all tags exist
       const existingTags = await this.prisma.marketTag.findMany({
         where: { id: { in: dto.tagIds } },
       });
-      
+  
       if (existingTags.length !== dto.tagIds.length) {
         throw new NotFoundException('One or more tags not found');
       }
+  
+      marketData.tags = {
+        connect: dto.tagIds.map(id => ({ id }))
+      };
     }
   
-    // Create market with tags if provided
     const market = await this.prisma.market.create({
-      data: {
-        name: dto.name,
-        location: dto.location,
-        latitude: dto.latitude,
-        longitude: dto.longitude,
-        ownerId: dto.ownerId,
-        tags: dto.tagIds ? {
-          connect: dto.tagIds.map(id => ({ id }))
-        } : undefined,
-      },
+      data: marketData,
       include: {
-        tags: true, // Include tags in the response
+        tags: true,
       },
     });
   
