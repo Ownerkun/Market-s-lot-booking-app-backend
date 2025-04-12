@@ -18,14 +18,14 @@ model Market {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   
-  tags      MarketTag[]
+  tags      MarketTag[] @relation("MarketToMarketTag")
   lots      Lot[]
 }
 
 model MarketTag {
   id        String   @id @default(uuid())
   name      String   @unique
-  markets   Market[]
+  markets   Market[] @relation("MarketToMarketTag")
   isSystem  Boolean  @default(false) // System tags can't be deleted
 
   createdAt DateTime @default(now())
