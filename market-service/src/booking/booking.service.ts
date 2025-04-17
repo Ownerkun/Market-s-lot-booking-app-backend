@@ -365,8 +365,12 @@ export class BookingService {
     return updatedBooking;
   }
 
-  async cancelBooking(bookingId: string, userId: string, userRole: Role) {
-    // Find booking with related data
+  async cancelBooking(
+    bookingId: string,
+    userId: string,
+    userRole: Role,
+    reason?: string
+  ) {
     const booking = await this.prisma.booking.findUnique({
       where: { id: bookingId },
       include: {
@@ -382,47 +386,50 @@ export class BookingService {
       throw new NotFoundException('Booking not found');
     }
   
-    // Check permissions - only landlord who owns the market can cancel
-    if (!(userRole === Role.LANDLORD && booking.lot.market.ownerId === userId)) {
-      throw new ForbiddenException('Only the market owner can cancel bookings');
+    const isTenant = userRole === Role.TENANT && booking.tenantId === userId;
+    const isMarketOwner = userRole === Role.LANDLORD && booking.lot.market.ownerId === userId;
+  
+    if (!isTenant && !isMarketOwner) {
+      throw new ForbiddenException('Only the booking creator or market owner can cancel bookings');
     }
   
-    // Can only cancel APPROVED bookings (not already cancelled/rejected)
-    if (booking.status !== 'APPROVED') {
-      throw new BadRequestException('Only approved bookings can be cancelled');
+    if (!['PENDING', 'APPROVED'].includes(booking.status)) {
+      throw new BadRequestException('Only pending or approved bookings can be cancelled');
     }
   
-    // Update status to CANCELLED
     const updatedBooking = await this.prisma.booking.update({
       where: { id: bookingId },
-      data: { status: 'CANCELLED' },
+      data: { 
+        status: 'CANCELLED',
+        rejectionReason: reason
+      },
     });
   
-    // Mark all booked dates as available again
-    const datesInPeriod = this.getDatesBetween(
-      booking.startDate, 
-      booking.endDate
-    );
+    if (booking.status === 'APPROVED') {
+      const datesInPeriod = this.getDatesBetween(
+        booking.startDate, 
+        booking.endDate
+      );
   
-    // Use transaction to ensure data consistency
-    await this.prisma.$transaction(
-      datesInPeriod.map(date => 
-        this.prisma.lotAvailability.upsert({
-          where: {
-            lotId_date: {
+      await this.prisma.$transaction(
+        datesInPeriod.map(date => 
+          this.prisma.lotAvailability.upsert({
+            where: {
+              lotId_date: {
+                lotId: booking.lotId,
+                date: date,
+              },
+            },
+            update: { available: true },
+            create: {
               lotId: booking.lotId,
               date: date,
+              available: true,
             },
-          },
-          update: { available: true },
-          create: {
-            lotId: booking.lotId,
-            date: date,
-            available: true,
-          },
-        })
-      )
-    );
+          })
+        )
+      );
+    }
   
     return updatedBooking;
   }
