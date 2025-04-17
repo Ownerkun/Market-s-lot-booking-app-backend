@@ -9,3 +9,7 @@ export class UpdateBookingStatusDto {
   status: 'APPROVED' | 'REJECTED';
   reason?: string;
 }
+
+export class ArchiveBookingDto {
+  isArchived: boolean;
+}

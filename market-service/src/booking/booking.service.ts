@@ -219,7 +219,9 @@ export class BookingService {
     });
   }
 
-  async getLandlordBookings(landlordId: string) {
+  async getLandlordBookings(landlordId: string, includeArchived = false) {
+    const now = new Date();
+    
     return this.prisma.booking.findMany({
       where: {
         lot: {
@@ -227,6 +229,32 @@ export class BookingService {
             ownerId: landlordId,
           },
         },
+        AND: [
+          {
+            OR: [
+              { isArchived: includeArchived ? undefined : false },
+              { isArchived: includeArchived ? true : undefined },
+            ],
+          },
+          {
+            OR: [
+              { status: 'PENDING' },
+              { 
+                AND: [
+                  { status: { in: ['APPROVED', 'CANCELLED'] } },
+                  { endDate: { gte: now } },
+                ]
+              },
+              {
+                AND: [
+                  { status: { in: ['APPROVED', 'CANCELLED'] } },
+                  { endDate: { lt: now } },
+                  { isArchived: false },
+                ]
+              }
+            ]
+          }
+        ]
       },
       include: { 
         lot: {
@@ -436,5 +464,44 @@ export class BookingService {
     return {
       pendingDates: [...new Set(pendingDates)], // Remove duplicates
     };
+  }
+
+  async archiveBooking(
+    bookingId: string,
+    userId: string,
+    userRole: Role,
+    isArchived: boolean
+  ) {
+    // Find the booking with related data
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: {
+        lot: {
+          include: {
+            market: true,
+          },
+        },
+      },
+    });
+  
+    if (!booking) {
+      throw new NotFoundException('Booking not found');
+    }
+  
+    // Check permissions - only landlord who owns the market can archive
+    if (!(userRole === Role.LANDLORD && booking.lot.market.ownerId === userId)) {
+      throw new ForbiddenException('Only the market owner can archive bookings');
+    }
+  
+    // Can only archive APPROVED or CANCELLED bookings
+    if (booking.status === 'PENDING') {
+      throw new BadRequestException('Pending bookings cannot be archived');
+    }
+  
+    // Update the archive status
+    return this.prisma.booking.update({
+      where: { id: bookingId },
+      data: { isArchived },
+    });
   }
 }

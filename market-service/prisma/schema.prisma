@@ -68,8 +68,9 @@ model Booking {
   status          BookingStatus @default(PENDING)
   startDate       DateTime
   endDate         DateTime
-  isOneDay        Boolean  @default(false)  // Add this field
+  isOneDay        Boolean  @default(false)
   rejectionReason String?
+  isArchived      Boolean  @default(false)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

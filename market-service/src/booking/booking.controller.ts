@@ -1,7 +1,7 @@
 import { Controller, Post, Get, Put, Param, Body, Request, UseGuards, Query, BadRequestException } from '@nestjs/common';
 import { BookingService } from './booking.service';
 import { JwtAuthGuard } from '../market/guards/jwt-auth.guard';
-import { CreateBookingDto, UpdateBookingStatusDto } from './dto/booking.dto';
+import { CreateBookingDto, UpdateBookingStatusDto, ArchiveBookingDto } from './dto/booking.dto';
 
 @Controller('bookings')
 @UseGuards(JwtAuthGuard)
@@ -17,26 +17,32 @@ export class BookingController {
   }
 
   @Get('landlord')
-  getLandlordBookings(@Request() req) {
-    return this.bookingService.getLandlordBookings(req.user.userId);
+  getLandlordBookings(
+    @Request() req,
+    @Query('includeArchived') includeArchived?: boolean
+  ) {
+    return this.bookingService.getLandlordBookings(
+      req.user.userId,
+      includeArchived
+    );
   }
 
   @Put(':id/status')
-async updateBookingStatus(
-  @Request() req,
-  @Param('id') bookingId: string,
-  @Body() dto: UpdateBookingStatusDto,  // Changed to use DTO
-) {
-  const userId = req.user.userId;
-  const userRole = req.user.role;
-  return this.bookingService.updateBookingStatus(
-    bookingId, 
-    dto.status,
-    userId, 
-    userRole,
-    dto.reason
-  );
-}
+  async updateBookingStatus(
+    @Request() req,
+    @Param('id') bookingId: string,
+    @Body() dto: UpdateBookingStatusDto,  // Changed to use DTO
+  ) {
+    const userId = req.user.userId;
+    const userRole = req.user.role;
+    return this.bookingService.updateBookingStatus(
+      bookingId, 
+      dto.status,
+      userId, 
+      userRole,
+      dto.reason
+    );
+  }
 
   @Get('tenant')
   async getBookingsByTenant(@Request() req) {
@@ -124,6 +130,22 @@ async updateBookingStatus(
       lotId, 
       month, 
       year
+    );
+  }
+
+  @Put(':id/archive')
+  async archiveBooking(
+    @Request() req,
+    @Param('id') bookingId: string,
+    @Body() dto: ArchiveBookingDto
+  ) {
+    const userId = req.user.userId;
+    const userRole = req.user.role;
+    return this.bookingService.archiveBooking(
+      bookingId, 
+      userId, 
+      userRole,
+      dto.isArchived
     );
   }
 }
