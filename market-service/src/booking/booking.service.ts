@@ -275,7 +275,11 @@ export class BookingService {
         tenantId,
       },
       include: {
-        lot: true,
+        lot: {
+          include: {
+            market: true,
+          },
+        }
       },
       orderBy: {
         startDate: 'asc',
