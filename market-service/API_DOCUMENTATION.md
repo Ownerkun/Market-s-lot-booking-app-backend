@@ -94,22 +94,112 @@ All endpoints require JWT authentication using Bearer token in Authorization hea
 - **Notes**:
   - TENANT can see all markets
   - LANDLORD can only see owned markets
-- **Response**: Array of Market objects
+- **Response**: Array of Market objects with tags
+  ```json
+  [
+    {
+      "id": "string",
+      "name": "string",
+      "location": "string",
+      "latitude": "number",
+      "longitude": "number",
+      "ownerId": "string",
+      "createdAt": "string",
+      "updatedAt": "string",
+      "tags": [
+        {
+          "id": "string",
+          "name": "string",
+          "isSystem": "boolean"
+        }
+      ]
+    }
+  ]
+  ```
 
 ### Get Market by ID
 
 - **URL**: `/markets/:id`
 - **Method**: `GET`
 - **Auth**: Required
-- **Response**: Market object with lots
+- **Notes**:
+  - TENANT can see any market
+  - LANDLORD can only see owned markets
+- **Response**: Market object with lots and tags
+  ```json
+  {
+    "id": "string",
+    "name": "string",
+    "location": "string",
+    "latitude": "number",
+    "longitude": "number",
+    "ownerId": "string",
+    "createdAt": "string",
+    "updatedAt": "string",
+    "tags": [
+      {
+        "id": "string",
+        "name": "string",
+        "isSystem": "boolean"
+      }
+    ],
+    "lots": [
+      {
+        "id": "string",
+        "name": "string",
+        "details": "string",
+        "price": "number",
+        "available": "boolean",
+        "shape": "object",
+        "position": "object"
+      }
+    ]
+  }
+  ```
+- **Error Responses**:
+  ```json
+  {
+    "statusCode": 404,
+    "message": "Market not found"
+  }
+  ```
+  ```json
+  {
+    "statusCode": 403,
+    "message": "You do not have permission to access this market"
+  }
+  ```
 
 ### Update Market
 
 - **URL**: `/markets/:id`
 - **Method**: `PUT`
 - **Auth**: Required (Market owner only)
-- **Body**: Same as Create Market
-- **Response**: Updated Market object
+- **Body**:
+  ```json
+  {
+    "name": "string",
+    "location": "string",
+    "latitude": "number",
+    "longitude": "number",
+    "ownerId": "string",
+    "tagIds": ["string"] // Optional array of tag IDs
+  }
+  ```
+- **Response**: Updated Market object with tags
+- **Error Responses**:
+  ```json
+  {
+    "statusCode": 404,
+    "message": "Market not found"
+  }
+  ```
+  ```json
+  {
+    "statusCode": 403,
+    "message": "You do not have permission to update this market"
+  }
+  ```
 
 ### Delete Market
 
@@ -117,6 +207,19 @@ All endpoints require JWT authentication using Bearer token in Authorization hea
 - **Method**: `DELETE`
 - **Auth**: Required (Market owner only)
 - **Response**: Deleted Market object
+- **Error Responses**:
+  ```json
+  {
+    "statusCode": 404,
+    "message": "Market not found"
+  }
+  ```
+  ```json
+  {
+    "statusCode": 403,
+    "message": "You do not have permission to delete this market"
+  }
+  ```
 
 ### Find Nearest Market
 
