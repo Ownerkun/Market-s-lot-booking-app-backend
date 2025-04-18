@@ -21,7 +21,10 @@ All endpoints require JWT authentication using Bearer token in Authorization hea
   {
     "email": "string",
     "password": "string",
-    "role": "TENANT | LANDLORD"
+    "role": "TENANT | LANDLORD",
+    "firstName": "string (optional)",
+    "lastName": "string (optional)",
+    "birthDate": "string (optional)"
   }
   ```
 - **Response**:
@@ -31,7 +34,12 @@ All endpoints require JWT authentication using Bearer token in Authorization hea
     "message": "User registered successfully",
     "data": {
       "userId": "string",
-      "profile": { ... }
+      "profile": {
+        "firstName": "string",
+        "lastName": "string",
+        "birthDate": "string",
+        "profilePicture": "string"
+      }
     }
   }
   ```
@@ -54,6 +62,114 @@ All endpoints require JWT authentication using Bearer token in Authorization hea
     "message": "Login successful",
     "data": {
       "token": "string"
+    }
+  }
+  ```
+
+### Change Password
+
+- **URL**: `/auth/change-password`
+- **Method**: `POST`
+- **Auth**: Required
+- **Body**:
+  ```json
+  {
+    "currentPassword": "string",
+    "newPassword": "string"
+  }
+  ```
+- **Response**:
+  ```json
+  {
+    "statusCode": 200,
+    "message": "Password changed successfully"
+  }
+  ```
+
+### Validate Token
+
+- **URL**: `/auth/validate-token`
+- **Method**: `POST`
+- **Body**:
+  ```json
+  {
+    "token": "string"
+  }
+  ```
+- **Response**:
+  ```json
+  {
+    "valid": true,
+    "user": {
+      "userId": "string",
+      "role": "string"
+    }
+  }
+  ```
+
+### Validate User
+
+- **URL**: `/auth/validate-user/:userId`
+- **Method**: `GET`
+- **Response**:
+  ```json
+  {
+    "valid": true,
+    "user": {
+      "id": "string",
+      "email": "string",
+      "role": "string"
+    }
+  }
+  ```
+
+### Get Profile
+
+- **URL**: `/auth/profile/:userId`
+- **Method**: `GET`
+- **Auth**: Required
+- **Response**:
+  ```json
+  {
+    "statusCode": 200,
+    "data": {
+      "userId": "string",
+      "email": "string",
+      "role": "string",
+      "profile": {
+        "firstName": "string",
+        "lastName": "string",
+        "birthDate": "string",
+        "profilePicture": "string"
+      }
+    }
+  }
+  ```
+
+### Update Profile
+
+- **URL**: `/auth/profile/:userId`
+- **Method**: `PUT`
+- **Auth**: Required
+- **Body**:
+  ```json
+  {
+    "firstName": "string",
+    "lastName": "string",
+    "birthDate": "string",
+    "profilePicture": "string"
+  }
+  ```
+- **Response**:
+  ```json
+  {
+    "statusCode": 200,
+    "message": "Profile updated successfully",
+    "data": {
+      "firstName": "string",
+      "lastName": "string",
+      "birthDate": "string",
+      "profilePicture": "string"
     }
   }
   ```

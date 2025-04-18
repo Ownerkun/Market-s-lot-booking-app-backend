@@ -18,8 +18,12 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
-    "seed": "ts-node prisma/seed.ts",
-    "seed:dev": "npm run build && npm run seed"
+    "seed:tags": "ts-node prisma/marketTags.seed.ts",
+    "seed:all": "npm run seed:tags",
+    "prisma:deploy": "prisma migrate deploy && npm run seed:all",
+    "prisma:reset": "prisma migrate reset --force",
+    "db:clean": "rimraf prisma/migrations",
+    "db:init": "npm run db:clean && prisma migrate dev --name init"
   },
   "dependencies": {
     "@nestjs/axios": "^4.0.0",

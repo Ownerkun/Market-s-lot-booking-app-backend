@@ -1,4 +1,5 @@
 version: '3.8'
+
 services:
   auth-db:
     image: postgres:latest
@@ -10,6 +11,11 @@ services:
       - "5432:5432"
     volumes:
       - auth_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U auth_user -d auth_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     networks:
       - prisma-network
 
@@ -23,6 +29,11 @@ services:
       - "5433:5432"
     volumes:
       - market_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U market_user -d market_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     networks:
       - prisma-network
 
@@ -30,10 +41,15 @@ services:
     build: ./auth-service
     ports:
       - "3001:3000"
-    env_file:
-      - .env
+    environment:
+      DB_HOST: auth-db
+      DB_PORT: 5432
+      DB_USER: auth_user
+      DB_PASSWORD: auth_password
+      DB_NAME: auth_db
     depends_on:
-      - auth-db
+      auth-db:
+        condition: service_healthy
     networks:
       - prisma-network
 
@@ -41,10 +57,15 @@ services:
     build: ./market-service
     ports:
       - "3002:3000"
-    env_file:
-      - .env
+    environment:
+      DB_HOST: market-db
+      DB_PORT: 5432
+      DB_USER: market_user
+      DB_PASSWORD: market_password
+      DB_NAME: market_db
     depends_on:
-      - market-db
+      market-db:
+        condition: service_healthy
     networks:
       - prisma-network
 
