@@ -1,6 +1,7 @@
-import { IsEmail, IsString, MinLength } from 'class-validator';
+import { IsDateString, IsEmail, IsString, MinLength, IsOptional } from 'class-validator';
 import { Role } from '@prisma/client';
 
+// auth.dto.ts
 export class RegisterDto {
   @IsEmail()
   email: string;
@@ -11,6 +12,18 @@ export class RegisterDto {
 
   @IsString()
   role: Role;
+
+  @IsString()
+  @MinLength(2)
+  firstName: string;
+
+  @IsString()
+  @MinLength(2)
+  lastName: string;
+
+  @IsString()
+  @IsOptional()
+  birthDate?: string;
 }
 
 export class LoginDto {
@@ -29,4 +42,9 @@ export class ChangePasswordDto {
   @IsString()
   @MinLength(8)
   newPassword: string;
+}
+
+export class DeleteUserDto {
+  @IsString()
+  userId: string;
 }

@@ -1,21 +1,36 @@
 # Auth Service API Documentation
 
+## Authentication
+
+All protected endpoints require JWT authentication using Bearer token in Authorization header.
+
+### Request Header Example
+
+```json
+{
+  "Authorization": "Bearer <jwt_token>"
+}
+```
+
 ## Endpoints
 
-### 1. User Registration
+### Register User
 
-- **URL:** `/api/auth/register`
-- **Method:** `POST`
-- **Description:** Registers a new user.
-- **Request Body:**
+- **URL**: `/auth/register`
+- **Method**: `POST`
+- **Auth**: Not required (Required with ADMIN role when registering new admin)
+- **Body**:
   ```json
   {
     "email": "string",
     "password": "string",
-    "role": "string"
+    "role": "TENANT | LANDLORD | ADMIN",
+    "firstName": "string",
+    "lastName": "string",
+    "birthDate": "string (YYYY-MM-DD)" // optional
   }
   ```
-- **Response:**
+- **Response**:
   ```json
   {
     "statusCode": 201,
@@ -25,25 +40,26 @@
       "profile": {
         "firstName": "string",
         "lastName": "string",
-        "birthDate": "string"
+        "birthDate": "string",
+        "createdAt": "string"
       }
     }
   }
   ```
 
-### 2. User Login
+### Login
 
-- **URL:** `/api/auth/login`
-- **Method:** `POST`
-- **Description:** Authenticates a user and returns a token.
-- **Request Body:**
+- **URL**: `/auth/login`
+- **Method**: `POST`
+- **Auth**: Not required
+- **Body**:
   ```json
   {
     "email": "string",
     "password": "string"
   }
   ```
-- **Response:**
+- **Response**:
   ```json
   {
     "statusCode": 200,
@@ -54,18 +70,37 @@
   }
   ```
 
-### 3. Validate Token
+### Change Password
 
-- **URL:** `/api/auth/validate-token`
-- **Method:** `POST`
-- **Description:** Validates a JWT token.
-- **Request Body:**
+- **URL**: `/auth/change-password`
+- **Method**: `POST`
+- **Auth**: Required
+- **Body**:
+  ```json
+  {
+    "currentPassword": "string",
+    "newPassword": "string"
+  }
+  ```
+- **Response**:
+  ```json
+  {
+    "statusCode": 200,
+    "message": "Password changed successfully"
+  }
+  ```
+
+### Validate Token
+
+- **URL**: `/auth/validate-token`
+- **Method**: `POST`
+- **Body**:
   ```json
   {
     "token": "string"
   }
   ```
-- **Response:**
+- **Response**:
   ```json
   {
     "valid": true,
@@ -76,36 +111,12 @@
   }
   ```
 
-### 4. Validate User
+### Get User Profile
 
-- **URL:** `/api/auth/validate-user/:userId`
-- **Method:** `GET`
-- **Description:** Validates if a user exists.
-- **Response:**
-  ```json
-  {
-    "valid": true,
-    "user": {
-      "id": "string",
-      "email": "string",
-      "role": "string",
-      "profile": {
-        "firstName": "string",
-        "lastName": "string",
-        "birthDate": "string"
-      }
-    }
-  }
-  ```
-
-### 5. Get User Profile
-
-- **URL:** `/api/auth/profile/:userId`
-- **Method:** `GET`
-- **Description:** Retrieves the profile of the authenticated user.
-- **Headers:**
-  - `Authorization: Bearer <token>`
-- **Response:**
+- **URL**: `/auth/profile/:userId`
+- **Method**: `GET`
+- **Auth**: Required
+- **Response**:
   ```json
   {
     "statusCode": 200,
@@ -117,29 +128,26 @@
         "firstName": "string",
         "lastName": "string",
         "birthDate": "string",
-        "profilePicture": "string"
+        "createdAt": "string"
       }
     }
   }
   ```
 
-### 6. Update User Profile
+### Update User Profile
 
-- **URL:** `/api/auth/profile/:userId`
-- **Method:** `PUT`
-- **Description:** Updates the profile of the authenticated user.
-- **Headers:**
-  - `Authorization: Bearer <token>`
-- **Request Body:**
+- **URL**: `/auth/profile/:userId`
+- **Method**: `PUT`
+- **Auth**: Required
+- **Body**:
   ```json
   {
     "firstName": "string",
     "lastName": "string",
-    "birthDate": "string",
-    "profilePicture": "string"
+    "birthDate": "string (YYYY-MM-DD)"
   }
   ```
-- **Response:**
+- **Response**:
   ```json
   {
     "statusCode": 200,
@@ -148,15 +156,66 @@
       "firstName": "string",
       "lastName": "string",
       "birthDate": "string",
-      "profilePicture": "string"
+      "createdAt": "string"
     }
+  }
+  ```
+
+### Delete User (Admin Only)
+
+- **URL**: `/auth/user/:userId`
+- **Method**: `DELETE`
+- **Auth**: Required (ADMIN role only)
+- **Response**:
+  ```json
+  {
+    "statusCode": 200,
+    "message": "User deleted successfully"
+  }
+  ```
+
+### Get All Users (Admin Only)
+
+- **URL**: `/auth/users`
+- **Method**: `GET`
+- **Auth**: Required (ADMIN role only)
+- **Response**:
+  ```json
+  {
+    "statusCode": 200,
+    "data": [
+      {
+        "id": "string",
+        "email": "string",
+        "role": "string",
+        "createdAt": "string",
+        "profile": {
+          "firstName": "string",
+          "lastName": "string",
+          "birthDate": "string",
+          "createdAt": "string"
+        }
+      }
+    ]
   }
   ```
 
 ## Error Responses
 
-- **400 Bad Request:** Invalid input data.
-- **401 Unauthorized:** Authentication failed or token expired.
-- **403 Forbidden:** Access denied.
-- **404 Not Found:** Resource not found.
-- **500 Internal Server Error:** Server encountered an error.
+### Common error response format:
+
+```json
+{
+  "statusCode": number,
+  "message": "string",
+  "error": "string"
+}
+```
+
+### Common Status Codes:
+
+- 400: Bad Request
+- 401: Unauthorized
+- 403: Forbidden
+- 404: Not Found
+- 500: Internal Server Error

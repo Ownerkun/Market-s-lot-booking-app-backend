@@ -12,32 +12,42 @@ export class AuthService {
     email: string, 
     password: string, 
     role: Role,
-    firstName?: string,
-    lastName?: string,
-    birthDate?: Date,) {
-
+    firstName: string,
+    lastName: string,
+    birthDate?: string, // Make birthDate optional
+    currentUserRole?: Role
+  ) {
+    // Prevent non-admin users from registering as admin
+    if (role === 'ADMIN' && currentUserRole !== 'ADMIN') {
+      throw new HttpException('Unauthorized to create admin accounts', HttpStatus.FORBIDDEN);
+    }
+  
     const hashedPassword = await bcryptjs.hash(password, 10);
-
+    const parsedBirthDate = birthDate ? new Date(birthDate) : undefined;
+  
     const user = await this.prisma.user.create({
-      data: { email, 
-              password: hashedPassword, 
-              role,
-              profile: {
-                create: {
-                  firstName,
-                  lastName,
-                  birthDate,
-                },
-              },
-            },
-            include: { profile: true 
-            },
+      data: { 
+        email, 
+        password: hashedPassword, 
+        role,
+        profile: {
+          create: {
+            firstName,
+            lastName,
+            birthDate: parsedBirthDate,
+          },
+        },
+      },
+      include: { profile: true },
     });
-
+  
     return {
       statusCode: HttpStatus.CREATED,
       message: 'User registered successfully',
-      data: { userId: user.id, profile: user.profile },
+      data: { 
+        userId: user.id, 
+        profile: user.profile 
+      },
     };
   }
 
@@ -132,6 +142,40 @@ export class AuthService {
       statusCode: HttpStatus.OK,
       message: 'Profile updated successfully',
       data: updatedProfile,
+    };
+  }
+
+  async deleteUser(userId: string) {
+    // First delete the profile if it exists
+    await this.prisma.userProfile.deleteMany({
+      where: { userId },
+    });
+
+    // Then delete the user
+    await this.prisma.user.delete({
+      where: { id: userId },
+    });
+
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'User deleted successfully',
+    };
+  }
+
+  async getAllUsers() {
+    const users = await this.prisma.user.findMany({
+      include: { profile: true },
+    });
+
+    return {
+      statusCode: HttpStatus.OK,
+      data: users.map(user => ({
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        createdAt: user.createdAt,
+        profile: user.profile,
+      })),
     };
   }
 }

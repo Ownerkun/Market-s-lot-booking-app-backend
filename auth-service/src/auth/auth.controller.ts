@@ -1,9 +1,11 @@
-import { Controller, Post, Body, UsePipes, ValidationPipe, HttpCode, HttpStatus, UnauthorizedException, Get, Param, NotFoundException, UseGuards, Put, Request } from '@nestjs/common';
+import { Controller, Post, Body, UsePipes, ValidationPipe, HttpCode, HttpStatus, UnauthorizedException, Get, Param, NotFoundException, UseGuards, Put, Request, Delete, HttpException } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegisterDto, LoginDto, ChangePasswordDto } from '../dto/auth.dto';
 import { JwtService } from '@nestjs/jwt';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { RolesGuard } from './guards/roles.guard';
+import { Roles } from './roles.decorator';
 
 @Controller('auth')
 export class AuthController {
@@ -15,8 +17,26 @@ export class AuthController {
 
   @Post('register')
   @UsePipes(new ValidationPipe())
-  async register(@Body() registerDto: RegisterDto) {
-    return this.authService.register(registerDto.email, registerDto.password, registerDto.role);
+  async register(@Body() registerDto: RegisterDto, @Request() req?) {
+    // Only check for admin role if trying to register as ADMIN
+    if (registerDto.role === 'ADMIN') {
+      if (!req?.user || req.user.role !== 'ADMIN') {
+        throw new HttpException('Unauthorized to create admin accounts', HttpStatus.FORBIDDEN);
+      }
+    }
+    
+    // Convert birthDate to string if it exists
+    const birthDateStr = registerDto.birthDate ? new Date(registerDto.birthDate).toISOString() : undefined;
+    
+    return this.authService.register(
+      registerDto.email, 
+      registerDto.password, 
+      registerDto.role,
+      registerDto.firstName,
+      registerDto.lastName,
+      birthDateStr,
+      req?.user?.role
+    );
   }
 
   @Post('login')
@@ -77,5 +97,21 @@ export class AuthController {
       profileData.birthDate,
       profileData.profilePicture,
     );
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  @Delete('user/:userId')
+  @HttpCode(HttpStatus.OK)
+  async deleteUser(@Param('userId') userId: string) {
+    return this.authService.deleteUser(userId);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  @Get('users')
+  @HttpCode(HttpStatus.OK)
+  async getAllUsers() {
+    return this.authService.getAllUsers();
   }
 }
