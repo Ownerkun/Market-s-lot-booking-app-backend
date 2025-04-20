@@ -15,6 +15,8 @@ model User {
   role      Role        @default(TENANT)
   profile   UserProfile?
   createdAt DateTime    @default(now())
+
+  fcmToken  String?
 }
 
 model UserProfile {

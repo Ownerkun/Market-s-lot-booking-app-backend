@@ -8,9 +8,10 @@ import { BookingService } from './booking/booking.service';
 import { BookingController } from './booking/booking.controller';
 import { MarketModule } from './market/market.module';
 import { ScheduleModule } from '@nestjs/schedule';
+import { NotificationModule } from './notification/notification.module';
 
 @Module({
-  imports: [LotModule, HttpModule, MarketModule, ScheduleModule.forRoot()],
+  imports: [LotModule, HttpModule, MarketModule, NotificationModule, ScheduleModule.forRoot()],
   controllers: [MarketController, BookingController],
   providers: [MarketService, PrismaService, BookingService],
 })

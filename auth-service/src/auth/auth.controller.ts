@@ -6,6 +6,7 @@ import { JwtService } from '@nestjs/jwt';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RolesGuard } from './guards/roles.guard';
 import { Roles } from './roles.decorator';
+import * as admin from 'firebase-admin';
 
 @Controller('auth')
 export class AuthController {
@@ -113,5 +114,53 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async getAllUsers() {
     return this.authService.getAllUsers();
+  }
+
+  @Post('fcm-token')
+  @UseGuards(JwtAuthGuard)
+  async registerFcmToken(
+    @Request() req,
+    @Body() body: { token: string }
+  ) {
+    await this.prisma.user.update({
+      where: { id: req.user.userId },
+      data: { fcmToken: body.token }
+    });
+    return { success: true };
+  }
+
+  @Post('send-notification')
+  @UseGuards(JwtAuthGuard)
+  async sendNotification(
+    @Body() body: {
+      userId: string;
+      title: string;
+      body: string;
+      data?: Record<string, any>;
+    }
+  ) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: body.userId }
+    });
+    
+    if (!user?.fcmToken) {
+      throw new NotFoundException('User FCM token not found');
+    }
+    
+    const message = {
+      token: user.fcmToken,
+      notification: {
+        title: body.title,
+        body: body.body
+      },
+      data: body.data
+    };
+    
+    try {
+      await admin.messaging().send(message);
+      return { success: true };
+    } catch (error) {
+      throw new HttpException('Failed to send notification', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
   }
 }

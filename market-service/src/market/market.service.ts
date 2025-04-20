@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateMarketDto, UpdateMarketDto, CreateMarketTagDto, UpdateMarketTagDto} from './dto/market.dto';
 import { Role } from './enum/role.enum';
@@ -25,6 +25,9 @@ export class MarketService {
   }
 
   async createMarket(dto: CreateMarketDto) {
+    if (!dto.ownerId) {
+      throw new BadRequestException('Owner ID is required');
+    }
     // First create the market
     const marketData: any = {
       name: dto.name,
