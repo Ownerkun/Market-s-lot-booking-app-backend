@@ -9,10 +9,11 @@ import { BookingController } from './booking/booking.controller';
 import { MarketModule } from './market/market.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { NotificationModule } from './notification/notification.module';
+import { InitialMarketTagsService } from 'prisma/initial-market-tags.service';
 
 @Module({
   imports: [LotModule, HttpModule, MarketModule, NotificationModule, ScheduleModule.forRoot()],
   controllers: [MarketController, BookingController],
-  providers: [MarketService, PrismaService, BookingService],
+  providers: [MarketService, PrismaService, BookingService, InitialMarketTagsService],
 })
 export class AppModule {}

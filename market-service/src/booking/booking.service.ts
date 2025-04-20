@@ -2,17 +2,10 @@ import { Injectable, NotFoundException, ForbiddenException, BadRequestException 
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateBookingDto, UpdateBookingStatusDto } from './dto/booking.dto';
 import { Role } from 'src/market/enum/role.enum';
-import { NotificationService } from '../notification/notification.service';
-import { HttpService } from '@nestjs/axios';
-import { firstValueFrom } from 'rxjs';
 
 @Injectable()
 export class BookingService {
-  constructor(
-    private prisma: PrismaService,
-    private notificationService: NotificationService,
-    private httpService: HttpService
-  ) {}
+  constructor(private prisma: PrismaService) {}
 
   private getDatesBetween(startDate: Date, endDate: Date): Date[] {
     const dates: Date[] = [];
@@ -24,22 +17,6 @@ export class BookingService {
     }
     
     return dates;
-  }
-
-  private async getUserFromAuthService(userId: string) {
-    try {
-      const response = await firstValueFrom(
-        this.httpService.get(`http://auth-service/auth/profile/${userId}`, {
-          timeout: 5000 // 5 second timeout
-        })
-      );
-      return response.data.data;
-    } catch (error) {
-      if (error.response?.status === 404) {
-        throw new NotFoundException('User not found');
-      }
-      throw new Error('Failed to fetch user from auth service');
-    }
   }
 
   async getLotAvailabilityForMonth(lotId: string, month: number, year: number) {
@@ -205,7 +182,6 @@ export class BookingService {
     // Check if the lot exists
     const lot = await this.prisma.lot.findUnique({
       where: { id: dto.lotId },
-      include: { market: true },
     });
   
     if (!lot) {
@@ -231,7 +207,7 @@ export class BookingService {
     }
 
     // Create the booking
-    const booking = await this.prisma.booking.create({
+    return this.prisma.booking.create({
       data: {
         tenantId,
         lotId: dto.lotId,
@@ -241,31 +217,6 @@ export class BookingService {
         isOneDay: dto.isOneDay || false,
       },
     });
-
-    // Fetch tenant and lot details for notification
-    const tenant = await this.getUserFromAuthService(tenantId);
-    const lotDetails = await this.prisma.lot.findUnique({ 
-      where: { id: dto.lotId },
-      include: { market: true }
-    });
-
-    if (!lotDetails) {
-      throw new NotFoundException('Lot details not found');
-    }
-    
-    // Send notification to landlord
-    await this.notificationService.sendNotification({
-      userId: lotDetails.market.ownerId as string,
-      title: 'New Booking Request',
-      body: `${tenant.firstName} requested to book ${lotDetails.name}`,
-      data: { 
-        type: 'BOOKING_REQUEST',
-        bookingId: booking.id,
-        lotId: lotDetails.id
-      }
-    });
-    
-    return booking;
   }
 
   async getLandlordBookings(landlordId: string, includeArchived = false) {
@@ -348,7 +299,7 @@ export class BookingService {
       throw new ForbiddenException('Only landlords can update booking status');
     }
   
-    // Find the booking with all necessary relations
+    // Find the booking and include the lot and market details
     const booking = await this.prisma.booking.findUnique({
       where: { id: bookingId },
       include: {
@@ -369,46 +320,27 @@ export class BookingService {
       throw new BadRequestException('Only pending bookings can be approved or rejected');
     }
   
-    // Check if the landlord owns the market
+    // Check if the landlord owns the market where the lot belongs
     if (booking.lot.market.ownerId !== userId) {
       throw new ForbiddenException('You do not have permission to update this booking');
     }
   
-    // Update the booking status and include lot details in the same query
+    // Update the booking status and rejection reason if applicable
     const updatedBooking = await this.prisma.booking.update({
       where: { id: bookingId },
       data: { 
         status,
         rejectionReason: status === 'REJECTED' ? reason : null 
       },
-      include: {
-        lot: true
-      }
     });
   
-    // Send notification to tenant
-    try {
-      await this.notificationService.sendNotification({
-        userId: updatedBooking.tenantId,
-        title: `Booking ${status.toLowerCase()}`,
-        body: `Your booking for ${updatedBooking.lot.name} has been ${status.toLowerCase()}`,
-        data: { 
-          type: 'BOOKING_STATUS_UPDATE',
-          bookingId: updatedBooking.id,
-          status: status
-        }
-      });
-    } catch (error) {
-      console.error('Failed to send notification:', error);
-      // Continue even if notification fails
-    }
-  
-    // Handle LotAvailability updates
+    // Handle LotAvailability updates for both APPROVED and REJECTED statuses
     const datesInPeriod = this.getDatesBetween(
       booking.startDate, 
       booking.endDate
     );
   
+    // Update lot availability based on status
     await this.prisma.$transaction(
       datesInPeriod.map(date => 
         this.prisma.lotAvailability.upsert({
@@ -419,12 +351,12 @@ export class BookingService {
             },
           },
           update: { 
-            available: status === 'REJECTED'
+            available: status === 'REJECTED' // true if rejected, false if approved
           },
           create: {
             lotId: booking.lotId,
             date: date,
-            available: status === 'REJECTED',
+            available: status === 'REJECTED', // true if rejected, false if approved
           },
         })
       )
