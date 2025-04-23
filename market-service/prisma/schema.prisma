@@ -75,6 +75,12 @@ model Booking {
   updatedAt       DateTime @updatedAt
 
   lot             Lot      @relation(fields: [lotId], references: [id])
+
+  paymentStatus   PaymentStatus @default(PENDING)
+  paymentMethod   String?
+  paymentProof    String?  // URL to uploaded payment proof image
+  paymentDueDate  DateTime // Date by which payment must be made
+  paymentAmount   Float?   // Calculated amount based on duration and price
 }
 
 enum BookingStatus {
@@ -82,4 +88,12 @@ enum BookingStatus {
   APPROVED
   REJECTED
   CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  VERIFIED
+  REJECTED
+  EXPIRED
 }

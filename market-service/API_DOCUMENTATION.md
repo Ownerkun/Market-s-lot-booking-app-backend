@@ -512,3 +512,56 @@ All endpoints require JWT authentication using Bearer token in Authorization hea
     "reason": "string" // Only present when not available due to pending booking
   }
   ```
+
+## Payments
+
+### Submit Payment
+
+- **URL**: `/bookings/:id/payment`
+- **Method**: `POST`
+- **Auth**: Required (TENANT only)
+- **Content-Type**: `multipart/form-data`
+- **Body**:
+  ```json
+  {
+    "paymentMethod": "string",
+    "paymentProof": "file"
+  }
+  ```
+- **Response**:
+  ```json
+  {
+    "message": "Payment submitted successfully",
+    "booking": {
+      "id": "string",
+      "paymentStatus": "PAID",
+      "paymentMethod": "string",
+      "paymentProof": "string"
+      // ... other booking fields
+    }
+  }
+  ```
+
+### Verify Payment
+
+- **URL**: `/bookings/:id/verify-payment`
+- **Method**: `PUT`
+- **Auth**: Required (LANDLORD only)
+- **Body**:
+  ```json
+  {
+    "isVerified": "boolean",
+    "reason": "string" // Optional, required when rejecting
+  }
+  ```
+- **Response**: Updated Booking object
+- **Notes**:
+  - When payment is verified, booking status is automatically set to APPROVED
+  - When payment is rejected, payment status is set to REJECTED
+
+### Get Payment Due Bookings
+
+- **URL**: `/bookings/payment-due`
+- **Method**: `GET`
+- **Auth**: Required (TENANT only)
+- **Response**: Array of Booking objects with pending payments past due date

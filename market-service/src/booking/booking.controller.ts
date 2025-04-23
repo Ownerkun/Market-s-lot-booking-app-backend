@@ -1,7 +1,9 @@
-import { Controller, Post, Get, Put, Param, Body, Request, UseGuards, Query, BadRequestException } from '@nestjs/common';
+import { Controller, Post, Get, Put, Param, Body, Request, UseGuards, Query, BadRequestException, UseInterceptors, UploadedFile, UsePipes, ValidationPipe } from '@nestjs/common';
 import { BookingService } from './booking.service';
 import { JwtAuthGuard } from '../market/guards/jwt-auth.guard';
 import { CreateBookingDto, UpdateBookingStatusDto, ArchiveBookingDto } from './dto/booking.dto';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { SubmitPaymentDto, VerifyPaymentDto } from 'src/payment/payment.dto';
 
 @Controller('bookings')
 @UseGuards(JwtAuthGuard)
@@ -9,6 +11,7 @@ export class BookingController {
   constructor(private bookingService: BookingService) {}
 
   @Post()
+  @UsePipes(new ValidationPipe({ transform: true }))
   requestBooking(
     @Request() req,
     @Body() dto: CreateBookingDto
@@ -147,5 +150,43 @@ export class BookingController {
       userRole,
       dto.isArchived
     );
+  }
+
+  @Post(':id/payment')
+  @UseInterceptors(FileInterceptor('paymentProof'))
+  async submitPayment(
+    @Request() req,
+    @Param('id') bookingId: string,
+    @Body() dto: SubmitPaymentDto,
+    @UploadedFile() file: Express.Multer.File
+  ) {
+    if (!file) {
+      throw new BadRequestException('Payment proof file is required');
+    }
+    return this.bookingService.submitPayment(
+      req.user.userId,
+      bookingId,
+      dto,
+      file
+    );
+  }
+
+  @Put(':id/verify-payment')
+  async verifyPayment(
+    @Request() req,
+    @Param('id') bookingId: string,
+    @Body() dto: VerifyPaymentDto
+  ) {
+    return this.bookingService.verifyPayment(
+      req.user.userId,
+      req.user.role,
+      bookingId,
+      dto
+    );
+  }
+
+  @Get('payment-due')
+  async getPaymentDueBookings(@Request() req) {
+    return this.bookingService.getPaymentDueBookings(req.user.userId);
   }
 }

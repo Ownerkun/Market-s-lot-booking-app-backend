@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, ForbiddenException, BadRequestException 
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateBookingDto, UpdateBookingStatusDto } from './dto/booking.dto';
 import { Role } from 'src/market/enum/role.enum';
+import { SubmitPaymentDto, VerifyPaymentDto } from 'src/payment/payment.dto';
 
 @Injectable()
 export class BookingService {
@@ -168,6 +169,12 @@ export class BookingService {
   }
 
   async requestBooking(tenantId: string, dto: CreateBookingDto) {
+
+    // Validate dates
+  if (!(dto.startDate instanceof Date) || !(dto.endDate instanceof Date)) {
+    throw new BadRequestException('Invalid date format');
+  }
+
     // Handle one-day booking
     if (dto.isOneDay) {
       dto.endDate = new Date(dto.startDate);
@@ -206,6 +213,15 @@ export class BookingService {
       );
     }
 
+    // Calculate payment amount and due date (e.g., 3 days from now)
+    const paymentDueDate = new Date();
+    paymentDueDate.setDate(paymentDueDate.getDate() + 3);
+    
+    const duration = Math.ceil(
+      (dto.endDate.getTime() - dto.startDate.getTime()) / (1000 * 60 * 60 * 24)
+    ) + 1;
+    const paymentAmount = lot.price * duration;
+
     // Create the booking
     return this.prisma.booking.create({
       data: {
@@ -215,6 +231,9 @@ export class BookingService {
         startDate: dto.startDate,
         endDate: dto.endDate,
         isOneDay: dto.isOneDay || false,
+        paymentStatus: 'PENDING',
+        paymentDueDate,
+        paymentAmount,
       },
     });
   }
@@ -514,5 +533,150 @@ export class BookingService {
       where: { id: bookingId },
       data: { isArchived },
     });
+  }
+
+  async submitPayment(
+    userId: string,
+    bookingId: string, 
+    dto: SubmitPaymentDto,
+    file: Express.Multer.File
+  ) {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+    });
+  
+    if (!booking) {
+      throw new NotFoundException('Booking not found');
+    }
+  
+    if (booking.tenantId !== userId) {
+      throw new ForbiddenException('You can only submit payment for your own bookings');
+    }
+  
+    if (booking.paymentStatus !== 'PENDING') {
+      throw new BadRequestException('Payment already submitted for this booking');
+    }
+  
+    // Here you would typically upload the file to a storage service
+    // For now, we'll just store the original filename  
+    const paymentProofUrl = `/payment-proofs/${file.originalname}`;
+  
+    // Updated to store the updated booking result
+    const updatedBooking = await this.prisma.booking.update({
+      where: { id: bookingId },
+      data: {
+        paymentStatus: 'PAID',
+        paymentMethod: dto.paymentMethod, 
+        paymentProof: paymentProofUrl,
+      },
+    });
+  
+    // Return more detailed response with message and booking data
+    return {
+      message: 'Payment submitted successfully',
+      booking: updatedBooking
+    };
+  }
+
+  async verifyPayment(
+    userId: string,
+    userRole: Role,
+    bookingId: string,
+    dto: VerifyPaymentDto
+  ) {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: {
+        lot: {
+          include: {
+            market: true,
+          },
+        },
+      },
+    });
+
+    if (!booking) {
+      throw new NotFoundException('Booking not found');
+    }
+
+    if (userRole !== Role.LANDLORD || booking.lot.market.ownerId !== userId) {
+      throw new ForbiddenException('Only the market owner can verify payments');
+    }
+
+    if (booking.paymentStatus !== 'PAID') {
+      throw new BadRequestException('Payment not submitted for verification');
+    }
+
+    const updatedBooking = await this.prisma.booking.update({
+      where: { id: bookingId },
+      data: {
+        paymentStatus: dto.isVerified ? 'VERIFIED' : 'REJECTED',
+        ...(dto.reason && { rejectionReason: dto.reason }),
+        ...(dto.isVerified && { status: 'APPROVED' }),
+      },
+    });
+
+    if (dto.isVerified) {
+      // Update lot availability
+      const datesInPeriod = this.getDatesBetween(
+        booking.startDate, 
+        booking.endDate
+      );
+  
+      await this.prisma.$transaction(
+        datesInPeriod.map(date => 
+          this.prisma.lotAvailability.upsert({
+            where: {
+              lotId_date: {
+                lotId: booking.lotId,
+                date: date,
+              },
+            },
+            update: { available: false },
+            create: {
+              lotId: booking.lotId,
+              date: date,
+              available: false,
+            },
+          })
+        )
+      );
+    }
+
+    return updatedBooking;
+  }
+
+  async getPaymentDueBookings(userId: string) {
+    const now = new Date();
+    return this.prisma.booking.findMany({
+      where: {
+        tenantId: userId,
+        paymentStatus: 'PENDING',
+        paymentDueDate: { lt: now },
+      },
+    });
+  }
+
+  async handleExpiredPayments() {
+    const now = new Date();
+    const expiredBookings = await this.prisma.booking.findMany({
+      where: {
+        paymentStatus: 'PENDING',
+        paymentDueDate: { lt: now },
+      },
+    });
+
+    return this.prisma.$transaction(
+      expiredBookings.map(booking => 
+        this.prisma.booking.update({
+          where: { id: booking.id },
+          data: {
+            paymentStatus: 'EXPIRED',
+            status: 'CANCELLED',
+            rejectionReason: 'Payment not received in time',
+          },
+        })
+      )
+    );
   }
 }
