@@ -24,6 +24,22 @@ export class RegisterDto {
   @IsString()
   @IsOptional()
   birthDate?: string;
+
+  @IsString()
+  @IsOptional()
+  province?: string;
+
+  @IsString()
+  @IsOptional()
+  district?: string;
+
+  @IsString()
+  @IsOptional()
+  subdistrict?: string;
+
+  @IsString()
+  @IsOptional()
+  postalCode?: string;
 }
 
 export class LoginDto {

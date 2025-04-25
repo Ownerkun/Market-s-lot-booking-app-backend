@@ -36,7 +36,11 @@ export class AuthController {
       registerDto.firstName,
       registerDto.lastName,
       birthDateStr,
-      req?.user?.role
+      req?.user?.role,
+      registerDto.province,
+      registerDto.district,
+      registerDto.subdistrict,
+      registerDto.postalCode
     );
   }
 
@@ -89,7 +93,16 @@ export class AuthController {
   @Put('profile/:userId')
   async updateProfile(
     @Param('userId') userId: string,
-    @Body() profileData: any,
+    @Body() profileData: {
+      firstName?: string;
+      lastName?: string;
+      birthDate?: string;
+      profilePicture?: string;
+      province?: string;
+      district?: string;
+      subdistrict?: string;
+      postalCode?: string;
+    },
   ) {
     return this.authService.updateProfile(
       userId,
@@ -97,6 +110,10 @@ export class AuthController {
       profileData.lastName,
       profileData.birthDate,
       profileData.profilePicture,
+      profileData.province,
+      profileData.district,
+      profileData.subdistrict,
+      profileData.postalCode
     );
   }
 

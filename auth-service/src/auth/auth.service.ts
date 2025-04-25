@@ -15,7 +15,11 @@ export class AuthService {
     firstName: string,
     lastName: string,
     birthDate?: string, // Make birthDate optional
-    currentUserRole?: Role
+    currentUserRole?: Role,
+    province?: string,
+    district?: string,
+    subdistrict?: string,
+    postalCode?: string
   ) {
     // Prevent non-admin users from registering as admin
     if (role === 'ADMIN' && currentUserRole !== 'ADMIN') {
@@ -35,6 +39,10 @@ export class AuthService {
             firstName,
             lastName,
             birthDate: parsedBirthDate,
+            province,
+            district,
+            subdistrict,
+            postalCode
           },
         },
       },
@@ -102,7 +110,16 @@ export class AuthService {
         userId: user.id,
         email: user.email,
         role: user.role,
-        profile: user.profile,
+        profile: {
+          firstName: user.profile?.firstName,
+          lastName: user.profile?.lastName,
+          birthDate: user.profile?.birthDate,
+          profilePicture: user.profile?.profilePicture,
+          province: user.profile?.province,
+          district: user.profile?.district,
+          subdistrict: user.profile?.subdistrict,
+          postalCode: user.profile?.postalCode,
+        },
       },
     };
   }
@@ -113,6 +130,10 @@ export class AuthService {
     lastName?: string,
     birthDate?: Date | string,
     profilePicture?: string,
+    province?: string,
+    district?: string,
+    subdistrict?: string,
+    postalCode?: string
   ) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -124,17 +145,22 @@ export class AuthService {
     }
 
     const parsedBirthDate = birthDate
-    ? typeof birthDate === 'string'
-      ? new Date(birthDate)
-      : birthDate
-    : undefined;
+      ? typeof birthDate === 'string'
+        ? new Date(birthDate)
+        : birthDate
+      : undefined;
 
     const updatedProfile = await this.prisma.userProfile.update({
       where: { userId },
       data: {
-        firstName,
-        lastName,
-        birthDate,
+        firstName: firstName ?? user.profile?.firstName,
+        lastName: lastName ?? user.profile?.lastName,
+        birthDate: parsedBirthDate ?? user.profile?.birthDate,
+        profilePicture: profilePicture ?? user.profile?.profilePicture,
+        province: province ?? user.profile?.province,
+        district: district ?? user.profile?.district,
+        subdistrict: subdistrict ?? user.profile?.subdistrict,
+        postalCode: postalCode ?? user.profile?.postalCode,
       },
     });
 

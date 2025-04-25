@@ -557,9 +557,9 @@ export class BookingService {
       throw new BadRequestException('Payment already submitted for this booking');
     }
   
-    // Here you would typically upload the file to a storage service
+    // Here would typically upload the file to a storage service
     // For now, we'll just store the original filename  
-    const paymentProofUrl = `/payment-proofs/${file.originalname}`;
+    const paymentProofUrl = `uploads/${file.originalname}`;
   
     // Updated to store the updated booking result
     const updatedBooking = await this.prisma.booking.update({

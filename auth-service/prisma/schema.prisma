@@ -27,6 +27,10 @@ model UserProfile {
   lastName  String?
   birthDate DateTime?
   profilePicture String?
+  province     String?
+  district     String?
+  subdistrict  String?
+  postalCode   String?
   createdAt DateTime @default(now())
 }
 
